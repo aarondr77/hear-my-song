@@ -49,9 +49,9 @@ export const getAuthUrl = async () => {
   return `https://accounts.spotify.com/authorize?${params.toString()}`;
 };
 
-export const getAccessTokenFromUrl = async () => {
-  const urlParams = new URLSearchParams(window.location.search);
-  const code = urlParams.get('code');
+export const getAccessTokenFromUrl = async (authCode = null) => {
+  // Use provided code or read from URL
+  const code = authCode || new URLSearchParams(window.location.search).get('code');
   
   if (!code) return null;
   

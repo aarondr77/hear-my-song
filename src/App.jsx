@@ -15,6 +15,7 @@ function App() {
   const [currentTrack, setCurrentTrack] = useState(null)
   const [playerReady, setPlayerReady] = useState(false)
   const isStartingPlayback = useRef(false)
+  const isExchangingToken = useRef(false)
 
   useEffect(() => {
     const initializeAuth = async () => {
@@ -33,14 +34,23 @@ function App() {
         }
         
         if (code) {
+          // Prevent double token exchange (React Strict Mode runs effects twice)
+          if (isExchangingToken.current) {
+            console.log('Token exchange already in progress, skipping...');
+            return;
+          }
+          isExchangingToken.current = true;
+          
+          // Clean up URL immediately to prevent any race conditions
+          // But capture the code first since we need it for the exchange
+          window.history.replaceState({}, document.title, '/');
+          
           console.log('Found authorization code, exchanging for token...');
-          const token = await getAccessTokenFromUrl();
+          const token = await getAccessTokenFromUrl(code);
           if (token) {
             console.log('Token exchange successful');
             setAccessToken(token);
             localStorage.setItem('spotify_access_token', token);
-            // Clean up URL - redirect to home
-            window.history.replaceState({}, document.title, '/');
           } else {
             throw new Error('Token exchange returned no token');
           }
@@ -60,6 +70,7 @@ function App() {
         sessionStorage.removeItem('code_verifier');
         // Clean up URL
         window.history.replaceState({}, document.title, '/');
+        isExchangingToken.current = false;
       }
     };
     
