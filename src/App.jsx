@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import './App.css'
 import { getAuthUrl, getAccessTokenFromUrl, fetchPlaylist } from './spotify'
 import { getNotesForTrack, getAllNotes, addTextNote as apiAddTextNote, addVoiceNote as apiAddVoiceNote, deleteNote as apiDeleteNote } from './api'
+import AnimatedCat from './AnimatedCat'
+import VoiceNotePlayer from './VoiceNotePlayer'
 
 function App() {
   const [accessToken, setAccessToken] = useState(null)
@@ -411,7 +413,7 @@ function App() {
   if (!currentUser) {
     return (
       <div className="app">
-        <div className="stars"></div>
+        <AnimatedCat />
         <header>
           <h1>Our Shared Songs 💕</h1>
           <p>Who's listening today?</p>
@@ -438,7 +440,7 @@ function App() {
   if (!accessToken) {
     return (
       <div className="app">
-        <div className="stars"></div>
+        <AnimatedCat />
         <header>
           <h1>Our Shared Songs 💕</h1>
           <p>A place for us to share and talk about our favorite music</p>
@@ -460,7 +462,7 @@ function App() {
   if (!playlist) {
     return (
       <div className="app">
-        <div className="stars"></div>
+        <AnimatedCat />
         <header>
           <h1>Our Shared Songs 💕</h1>
         </header>
@@ -490,7 +492,7 @@ function App() {
 
   return (
     <div className="app">
-      <div className="stars"></div>
+      <AnimatedCat />
       <header>
         <h1>Our Shared Songs 💕</h1>
         <p>{playlist.name} • {playlist.tracks.items.length} tracks</p>
@@ -562,8 +564,11 @@ function App() {
                               <p className="note-content">{note.content}</p>
                             ) : (
                               <div className="voice-note">
-                                <audio controls src={note.content} />
-                                <span className="voice-duration">{formatTime(note.duration || 0)}</span>
+                                <VoiceNotePlayer 
+                                  src={note.content} 
+                                  duration={note.duration || 0} 
+                                  partner={note.author === 'Partner 1' ? 'partner1' : 'partner2'}
+                                />
                               </div>
                             )}
                           </div>
@@ -572,40 +577,64 @@ function App() {
                     </div>
 
                     <div className="add-note">
-                      <div className="text-input-row">
-                        <input
-                          type="text"
-                          placeholder={`What do you think, ${currentUser}?`}
-                          value={newMessage}
-                          onChange={(e) => setNewMessage(e.target.value)}
-                          onKeyDown={(e) => e.key === 'Enter' && addTextNote(trackId)}
-                        />
-                        <button 
-                          className="send-btn" 
-                          onClick={() => addTextNote(trackId)}
-                          disabled={!newMessage.trim()}
-                        >
-                          💌
-                        </button>
-                      </div>
-                      
-                      <div className="voice-input-row">
-                        {isRecording ? (
-                          <>
-                            <div className="recording-indicator">
-                              <span className="recording-dot"></span>
-                              Recording... {formatTime(recordingTime)}
-                            </div>
-                            <button className="stop-record-btn" onClick={stopRecording}>
-                              ⏹ Stop
-                            </button>
-                          </>
-                        ) : (
-                          <button className="record-btn" onClick={startRecording}>
-                            🎤 Record Voice Note
+                      {isRecording ? (
+                        <div className="recording-state">
+                          <div className="recording-indicator">
+                            <span className="recording-dot"></span>
+                            Recording... {formatTime(recordingTime)}
+                          </div>
+                          <button className="stop-record-btn" onClick={stopRecording}>
+                            ⏹ Stop
                           </button>
-                        )}
-                      </div>
+                        </div>
+                      ) : (
+                        <div className="unified-input-row">
+                          <div className="textarea-wrapper">
+                            <textarea
+                              placeholder={`What do you think, ${currentUser}?`}
+                              value={newMessage}
+                              onChange={(e) => setNewMessage(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                  e.preventDefault()
+                                  if (newMessage.trim()) {
+                                    addTextNote(trackId)
+                                  }
+                                }
+                              }}
+                              rows={3}
+                              className="note-textarea"
+                            />
+                            {newMessage.trim() ? (
+                              <button 
+                                className="send-btn-inside" 
+                                onClick={() => addTextNote(trackId)}
+                                title="Send message"
+                              >
+                                💌
+                              </button>
+                            ) : (
+                              <button 
+                                className="mic-btn-inside" 
+                                onClick={startRecording}
+                                title="Record voice note"
+                              >
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                  {/* Microphone body */}
+                                  <rect x="9" y="3" width="6" height="8" rx="3" stroke="#2c2c2c" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                                  {/* Microphone stand */}
+                                  <line x1="12" y1="11" x2="12" y2="15" stroke="#2c2c2c" strokeWidth="2" strokeLinecap="round"/>
+                                  {/* Microphone base */}
+                                  <path d="M 8 15 Q 12 17 16 15" stroke="#2c2c2c" strokeWidth="2" fill="none" strokeLinecap="round"/>
+                                  {/* Sound waves */}
+                                  <path d="M 4 10 Q 6 12 4 14" stroke="#2c2c2c" strokeWidth="1.5" fill="none" strokeLinecap="round" opacity="0.6"/>
+                                  <path d="M 20 10 Q 18 12 20 14" stroke="#2c2c2c" strokeWidth="1.5" fill="none" strokeLinecap="round" opacity="0.6"/>
+                                </svg>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

@@ -1,11 +1,10 @@
 :root {
-  font-family: 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  font-family: 'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', -apple-system, BlinkMacSystemFont, sans-serif;
   line-height: 1.6;
   font-weight: 400;
 
-  color: #213547;
-  background-color: #fafbfc;
+  color: #2c2c2c;
+  background-color: #fefefe;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -21,28 +20,4 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-}
-
-button {
-  border-radius: 12px;
-  border: 1px solid transparent;
-  padding: 0.8em 1.5em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #667eea;
-  color: white;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-button:hover {
-  background-color: #5568d3;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-  transform: translateY(-1px);
-}
-
-button:active {
-  transform: translateY(0);
 }
