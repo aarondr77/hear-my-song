@@ -1,10 +1,14 @@
 # Our Garden
 
 # Website ideas
+1. Instrad of notebook themed, it can be Shosh's treasure chest box. The first screen you see if you are not signed in is the closed box and the cat that you can move around to open the box. When you click open, it takes you to the connect spotify screen. Then, you are inside the box and there are songs all around it. Idk how they should be styled yet. 
+
+
 1. Let either of us upload a doodle and add it to our garden
 2. Let us move the songs around the garden. We could each have a character that we can move around the garden and discover songs. 
 3. We can hide things in the garden for eachother. 
-4. This could keep evolving, I can start with a garden, then add a house and a whole new world for us to explore and share together. 
+4. This could keep evolving, I can start with a garden, then add a house and a whole new world for us to explore and share together.
+
 
 
 # Trinkets to add

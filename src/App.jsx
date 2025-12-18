@@ -5,6 +5,8 @@ import { getNotesForTrack, getAllNotes, addTextNote as apiAddTextNote, addVoiceN
 import ControllableCat from './ControllableCat'
 import VoiceNotePlayer from './VoiceNotePlayer'
 import CatBowl from './CatBowl'
+import CatWindow from './CatWindow'
+import CatLegs from './CatLegs'
 
 function App() {
   const [accessToken, setAccessToken] = useState(null)
@@ -606,13 +608,30 @@ function App() {
                     data-cat-interactive
                     data-cat-action="play"
                     data-track-uri={item.track.uri}
+                    data-play-type={['bowl', 'window', 'legs'][index % 3]}
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <CatBowl
-                      isPlaying={isTrackPlaying(item.track.uri)}
-                      onClick={() => isTrackPlaying(item.track.uri) ? player.togglePlay() : handlePlay(item.track.uri)}
-                      disabled={!deviceId}
-                    />
+                    {index % 3 === 0 && (
+                      <CatBowl
+                        isPlaying={isTrackPlaying(item.track.uri)}
+                        onClick={() => isTrackPlaying(item.track.uri) ? player.togglePlay() : handlePlay(item.track.uri)}
+                        disabled={!deviceId}
+                      />
+                    )}
+                    {index % 3 === 1 && (
+                      <CatWindow
+                        isPlaying={isTrackPlaying(item.track.uri)}
+                        onClick={() => isTrackPlaying(item.track.uri) ? player.togglePlay() : handlePlay(item.track.uri)}
+                        disabled={!deviceId}
+                      />
+                    )}
+                    {index % 3 === 2 && (
+                      <CatLegs
+                        isPlaying={isTrackPlaying(item.track.uri)}
+                        onClick={() => isTrackPlaying(item.track.uri) ? player.togglePlay() : handlePlay(item.track.uri)}
+                        disabled={!deviceId}
+                      />
+                    )}
                   </div>
                 </div>
 

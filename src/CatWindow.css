@@ -1,0 +1,57 @@
+.cat-window {
+  width: 70px;
+  height: 70px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  position: relative;
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.cat-window:hover:not(:disabled) {
+  transform: scale(1.05);
+}
+
+.cat-window:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.cat-window:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.window-svg {
+  display: block;
+  overflow: visible;
+}
+
+/* Subtle curtain sway when playing */
+.cat-window.playing .window-svg path[stroke="#DDA0DD"] {
+  animation: curtain-sway 2s ease-in-out infinite;
+}
+
+@keyframes curtain-sway {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(2px);
+  }
+}
+
+/* Play icon pulse on hover */
+.cat-window:hover:not(:disabled) .window-icon circle {
+  animation: icon-glow 1s ease-in-out infinite;
+}
+
+@keyframes icon-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 2px rgba(29, 185, 84, 0.5));
+  }
+  50% {
+    filter: drop-shadow(0 0 6px rgba(29, 185, 84, 0.8));
+  }
+}

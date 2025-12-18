@@ -238,3 +238,231 @@
 .controllable-cat.eating.moving .cat-svg {
   animation: eating-wiggle 0.5s ease-in-out infinite;
 }
+
+/* ===== HANGING ANIMATION (Window) ===== */
+.controllable-cat.hanging .cat-svg {
+  animation: hanging-sway 1.5s ease-in-out infinite;
+  transform-origin: center top;
+}
+
+@keyframes hanging-sway {
+  0%, 100% {
+    transform: rotate(-10deg) translateY(5px);
+  }
+  50% {
+    transform: rotate(10deg) translateY(5px);
+  }
+}
+
+.controllable-cat.hanging .cat-head {
+  animation: hanging-head-look 2s ease-in-out infinite;
+  transform-origin: center bottom;
+}
+
+@keyframes hanging-head-look {
+  0%, 100% {
+    transform: rotate(-5deg);
+  }
+  50% {
+    transform: rotate(5deg);
+  }
+}
+
+/* Paws reach up when hanging */
+.controllable-cat.hanging .cat-paw-front,
+.controllable-cat.hanging .cat-paw-back {
+  animation: paws-grip 0.5s ease-in-out infinite;
+}
+
+@keyframes paws-grip {
+  0%, 100% {
+    transform: translateY(-3px);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+/* Tail hangs down and sways */
+.controllable-cat.hanging .cat-tail {
+  animation: hanging-tail 1s ease-in-out infinite;
+  transform-origin: 30px 70px;
+}
+
+@keyframes hanging-tail {
+  0%, 100% {
+    transform: rotate(30deg);
+  }
+  50% {
+    transform: rotate(-30deg);
+  }
+}
+
+/* Wide eyes when hanging */
+.controllable-cat.hanging .cat-head circle[fill="var(--eye-color)"] {
+  animation: wide-eyes 0.3s ease-in-out infinite alternate;
+}
+
+@keyframes wide-eyes {
+  0% {
+    r: 3;
+  }
+  100% {
+    r: 4;
+  }
+}
+
+/* Override moving when hanging */
+.controllable-cat.hanging.moving .cat-svg {
+  animation: hanging-sway 1.5s ease-in-out infinite;
+}
+
+/* ===== SLEEPING ANIMATION (Legs) ===== */
+.controllable-cat.sleeping .cat-svg {
+  animation: sleeping-breathe 2s ease-in-out infinite;
+}
+
+@keyframes sleeping-breathe {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.03);
+  }
+}
+
+.controllable-cat.sleeping .cat-head {
+  animation: sleeping-head 2s ease-in-out infinite;
+  transform-origin: center bottom;
+}
+
+@keyframes sleeping-head {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(3px) rotate(5deg);
+  }
+}
+
+/* Tail curls when sleeping */
+.controllable-cat.sleeping .cat-tail {
+  animation: sleeping-tail 3s ease-in-out infinite;
+  transform-origin: 30px 70px;
+}
+
+@keyframes sleeping-tail {
+  0%, 100% {
+    transform: rotate(-20deg);
+  }
+  50% {
+    transform: rotate(-30deg);
+  }
+}
+
+/* Paws tuck in when sleeping */
+.controllable-cat.sleeping .cat-paw-front,
+.controllable-cat.sleeping .cat-paw-back {
+  animation: sleeping-paws 2s ease-in-out infinite;
+}
+
+@keyframes sleeping-paws {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(2px) scale(0.9);
+  }
+}
+
+/* Eyes close when sleeping */
+.controllable-cat.sleeping .cat-head circle[fill="var(--eye-color)"] {
+  animation: eyes-close 2s ease-in-out infinite;
+}
+
+@keyframes eyes-close {
+  0%, 40%, 60%, 100% {
+    transform: scaleY(0.2);
+  }
+  45%, 55% {
+    transform: scaleY(1);
+  }
+}
+
+/* Whiskers relax when sleeping */
+.controllable-cat.sleeping .cat-whiskers {
+  animation: sleeping-whiskers 2s ease-in-out infinite;
+  transform-origin: center;
+}
+
+@keyframes sleeping-whiskers {
+  0%, 100% {
+    transform: scaleX(0.95);
+  }
+  50% {
+    transform: scaleX(1);
+  }
+}
+
+/* Override moving when sleeping */
+.controllable-cat.sleeping.moving .cat-svg {
+  animation: sleeping-breathe 2s ease-in-out infinite;
+}
+
+/* ZZZ floating animation when sleeping */
+.cat-zzz-container {
+  position: absolute;
+  top: -10px;
+  right: -5px;
+  pointer-events: none;
+  transform: scaleX(1); /* Prevent flip from parent */
+}
+
+/* When facing left, flip zzz back to normal */
+.controllable-cat[style*="scaleX(-1)"] .cat-zzz-container {
+  transform: scaleX(-1);
+}
+
+.cat-zzz {
+  position: absolute;
+  font-family: 'Comic Sans MS', 'Chalkboard SE', cursive;
+  font-weight: bold;
+  color: #6B5B95;
+  opacity: 0;
+  animation: cat-zzz-float 2s ease-in-out infinite;
+}
+
+.cat-zzz-1 {
+  font-size: 12px;
+  right: 0;
+  animation-delay: 0s;
+}
+
+.cat-zzz-2 {
+  font-size: 14px;
+  right: 10px;
+  animation-delay: 0.5s;
+}
+
+.cat-zzz-3 {
+  font-size: 18px;
+  right: 5px;
+  animation-delay: 1s;
+}
+
+@keyframes cat-zzz-float {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) rotate(-10deg);
+  }
+  20% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-25px) rotate(10deg);
+  }
+}

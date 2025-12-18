@@ -1,0 +1,57 @@
+.cat-legs {
+  width: 70px;
+  height: 60px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  position: relative;
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.cat-legs:hover:not(:disabled) {
+  transform: scale(1.05);
+}
+
+.cat-legs:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.cat-legs:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.legs-svg {
+  display: block;
+  overflow: visible;
+}
+
+/* Leg hair subtle movement when playing (like from cat purring) */
+.cat-legs.playing .leg-hair path {
+  animation: hair-wave 0.5s ease-in-out infinite;
+}
+
+@keyframes hair-wave {
+  0%, 100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(3deg);
+  }
+}
+
+/* Play icon pulse on hover */
+.cat-legs:hover:not(:disabled) .legs-icon circle {
+  animation: icon-glow 1s ease-in-out infinite;
+}
+
+@keyframes icon-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 2px rgba(29, 185, 84, 0.5));
+  }
+  50% {
+    filter: drop-shadow(0 0 6px rgba(29, 185, 84, 0.8));
+  }
+}

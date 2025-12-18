@@ -11,6 +11,8 @@ export default function ControllableCat({ onInteract, partner = 'partner1', isPl
   const [movementDirection, setMovementDirection] = useState('right') // 'left', 'right', 'up', 'down'
   const [isMoving, setIsMoving] = useState(false)
   const [isEating, setIsEating] = useState(false)
+  const [isHanging, setIsHanging] = useState(false)
+  const [isSleeping, setIsSleeping] = useState(false)
   const keysPressed = useRef(new Set())
   const animationFrameId = useRef(null)
   const speed = 3
@@ -19,43 +21,51 @@ export default function ControllableCat({ onInteract, partner = 'partner1', isPl
   const catColor = partner === 'partner1' ? '#9b59b6' : '#3498db'
   const eyeColor = partner === 'partner1' ? '#7d3c98' : '#2874a6'
 
-  // Check if cat is near a playing bowl
+  // Check if cat is near a playing play button and detect type
   useEffect(() => {
     if (!isPlaying || !currentTrackUri) {
       setIsEating(false)
+      setIsHanging(false)
+      setIsSleeping(false)
       return
     }
 
-    const checkNearBowl = () => {
-      const bowls = document.querySelectorAll('[data-cat-action="play"]')
-      const eatingRadius = 60 // pixels
+    const checkNearPlayButton = () => {
+      const playButtons = document.querySelectorAll('[data-cat-action="play"]')
+      const interactionRadius = 70 // pixels
       
-      for (const bowl of bowls) {
-        const trackUri = bowl.getAttribute('data-track-uri')
-        if (trackUri !== currentTrackUri) continue // Only check the playing track's bowl
+      for (const button of playButtons) {
+        const trackUri = button.getAttribute('data-track-uri')
+        if (trackUri !== currentTrackUri) continue // Only check the playing track's button
         
-        const rect = bowl.getBoundingClientRect()
-        const bowlCenter = {
+        const rect = button.getBoundingClientRect()
+        const buttonCenter = {
           x: rect.left + rect.width / 2,
           y: rect.top + rect.height / 2
         }
         
         const distance = Math.sqrt(
-          Math.pow(positionRef.current.x - bowlCenter.x, 2) + 
-          Math.pow(positionRef.current.y - bowlCenter.y, 2)
+          Math.pow(positionRef.current.x - buttonCenter.x, 2) + 
+          Math.pow(positionRef.current.y - buttonCenter.y, 2)
         )
         
-        if (distance < eatingRadius) {
-          setIsEating(true)
+        if (distance < interactionRadius) {
+          const playType = button.getAttribute('data-play-type')
+          setIsEating(playType === 'bowl')
+          setIsHanging(playType === 'window')
+          setIsSleeping(playType === 'legs')
           return
         }
       }
+      // Not near any button
       setIsEating(false)
+      setIsHanging(false)
+      setIsSleeping(false)
     }
 
     // Check immediately and then periodically
-    checkNearBowl()
-    const interval = setInterval(checkNearBowl, 100)
+    checkNearPlayButton()
+    const interval = setInterval(checkNearPlayButton, 100)
     return () => clearInterval(interval)
   }, [isPlaying, currentTrackUri, position]) // position triggers re-check when cat moves
 
@@ -207,7 +217,7 @@ export default function ControllableCat({ onInteract, partner = 'partner1', isPl
   return (
     <div 
       ref={catRef}
-      className={`controllable-cat ${isMoving ? 'moving' : ''} ${isEating ? 'eating' : ''}`}
+      className={`controllable-cat ${isMoving ? 'moving' : ''} ${isEating ? 'eating' : ''} ${isHanging ? 'hanging' : ''} ${isSleeping ? 'sleeping' : ''}`}
       style={{
         left: `${position.x}px`,
         top: `${position.y}px`,
@@ -423,6 +433,15 @@ export default function ControllableCat({ onInteract, partner = 'partner1', isPl
       
       {/* Interaction indicator */}
       <div className="cat-interaction-hint">Press Enter</div>
+      
+      {/* ZZZ symbols when sleeping */}
+      {isSleeping && (
+        <div className="cat-zzz-container">
+          <span className="cat-zzz cat-zzz-1">z</span>
+          <span className="cat-zzz cat-zzz-2">z</span>
+          <span className="cat-zzz cat-zzz-3">Z</span>
+        </div>
+      )}
     </div>
   )
 }
