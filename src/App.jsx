@@ -11,6 +11,33 @@ function App() {
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTrack, setCurrentTrack] = useState(null)
   const isExchangingToken = useRef(false)
+  
+  // Notes & Voice Memos State
+  const [expandedTrack, setExpandedTrack] = useState(null)
+  const [trackNotes, setTrackNotes] = useState({})
+  const [newMessage, setNewMessage] = useState('')
+  const [isRecording, setIsRecording] = useState(false)
+  const [recordingTime, setRecordingTime] = useState(0)
+  const [currentUser, setCurrentUser] = useState(() => localStorage.getItem('current_user') || null)
+  
+  const mediaRecorderRef = useRef(null)
+  const audioChunksRef = useRef([])
+  const recordingIntervalRef = useRef(null)
+
+  // Load saved notes from localStorage
+  useEffect(() => {
+    const savedNotes = localStorage.getItem('track_notes')
+    if (savedNotes) {
+      setTrackNotes(JSON.parse(savedNotes))
+    }
+  }, [])
+
+  // Save notes to localStorage whenever they change
+  useEffect(() => {
+    if (Object.keys(trackNotes).length > 0) {
+      localStorage.setItem('track_notes', JSON.stringify(trackNotes))
+    }
+  }, [trackNotes])
 
   // Auth initialization
   useEffect(() => {
@@ -118,7 +145,6 @@ function App() {
     try {
       await player.activateElement()
       
-      // Transfer playback to this device and play
       await fetch('https://api.spotify.com/v1/me/player', {
         method: 'PUT',
         headers: {
@@ -128,7 +154,6 @@ function App() {
         body: JSON.stringify({ device_ids: [deviceId], play: true })
       })
 
-      // Start the track
       const response = await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
         method: 'PUT',
         headers: {
@@ -142,7 +167,6 @@ function App() {
         throw new Error('Failed to play track')
       }
 
-      // Ensure playback starts (browser autoplay workaround)
       setTimeout(async () => {
         const state = await player.getCurrentState()
         if (state?.paused) await player.resume()
@@ -153,13 +177,172 @@ function App() {
     }
   }
 
+  // Voice Recording Functions
+  const getSupportedMimeType = () => {
+    const types = [
+      'audio/webm;codecs=opus',
+      'audio/webm',
+      'audio/mp4',
+      'audio/ogg;codecs=opus',
+      'audio/wav',
+      ''  // Empty string = browser default
+    ]
+    for (const type of types) {
+      if (type === '' || MediaRecorder.isTypeSupported(type)) {
+        return type
+      }
+    }
+    return ''
+  }
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mimeType = getSupportedMimeType()
+      const options = mimeType ? { mimeType } : {}
+      
+      mediaRecorderRef.current = new MediaRecorder(stream, options)
+      audioChunksRef.current = []
+      
+      // Store the actual MIME type being used
+      const actualMimeType = mediaRecorderRef.current.mimeType || 'audio/webm'
+
+      mediaRecorderRef.current.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data)
+        }
+      }
+
+      mediaRecorderRef.current.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: actualMimeType })
+        const reader = new FileReader()
+        reader.onloadend = () => {
+          const base64Audio = reader.result
+          addVoiceNote(expandedTrack, base64Audio)
+        }
+        reader.readAsDataURL(audioBlob)
+        
+        stream.getTracks().forEach(track => track.stop())
+      }
+
+      mediaRecorderRef.current.start()
+      setIsRecording(true)
+      setRecordingTime(0)
+      
+      recordingIntervalRef.current = setInterval(() => {
+        setRecordingTime(prev => prev + 1)
+      }, 1000)
+    } catch (err) {
+      setError('Could not access microphone. Please allow microphone access.')
+    }
+  }
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop()
+      setIsRecording(false)
+      clearInterval(recordingIntervalRef.current)
+    }
+  }
+
+  const addTextNote = (trackId) => {
+    if (!newMessage.trim() || !currentUser) return
+    
+    const note = {
+      id: Date.now(),
+      type: 'text',
+      content: newMessage.trim(),
+      author: currentUser,
+      timestamp: new Date().toISOString()
+    }
+
+    setTrackNotes(prev => ({
+      ...prev,
+      [trackId]: [...(prev[trackId] || []), note]
+    }))
+    setNewMessage('')
+  }
+
+  const addVoiceNote = (trackId, audioData) => {
+    if (!currentUser) return
+    
+    const note = {
+      id: Date.now(),
+      type: 'voice',
+      content: audioData,
+      duration: recordingTime,
+      author: currentUser,
+      timestamp: new Date().toISOString()
+    }
+
+    setTrackNotes(prev => ({
+      ...prev,
+      [trackId]: [...(prev[trackId] || []), note]
+    }))
+    setRecordingTime(0)
+  }
+
+  const deleteNote = (trackId, noteId) => {
+    setTrackNotes(prev => ({
+      ...prev,
+      [trackId]: (prev[trackId] || []).filter(note => note.id !== noteId)
+    }))
+  }
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
+
+  const formatDate = (isoString) => {
+    const date = new Date(isoString)
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    })
+  }
+
+  // User Selection Screen
+  if (!currentUser) {
+    return (
+      <div className="app">
+        <div className="stars"></div>
+        <header>
+          <h1>Our Shared Songs 💕</h1>
+          <p>Who's listening today?</p>
+        </header>
+        <main>
+          <div className="user-select">
+            <button className="user-btn" onClick={() => { setCurrentUser('Partner 1'); localStorage.setItem('current_user', 'Partner 1'); }}>
+              <span className="user-emoji">💜</span>
+              <span>Partner 1</span>
+            </button>
+            <span className="heart-divider">♥</span>
+            <button className="user-btn" onClick={() => { setCurrentUser('Partner 2'); localStorage.setItem('current_user', 'Partner 2'); }}>
+              <span className="user-emoji">💙</span>
+              <span>Partner 2</span>
+            </button>
+          </div>
+          <p className="switch-hint">You can switch anytime from the header</p>
+        </main>
+      </div>
+    )
+  }
+
   // Login screen
   if (!accessToken) {
     return (
       <div className="app">
+        <div className="stars"></div>
         <header>
           <h1>Our Shared Songs 💕</h1>
           <p>A place for us to share and talk about our favorite music</p>
+          <div className="current-user-badge" onClick={() => { setCurrentUser(null); localStorage.removeItem('current_user'); }}>
+            <span>{currentUser === 'Partner 1' ? '💜' : '💙'} {currentUser}</span>
+          </div>
         </header>
         <main>
           <div className="placeholder">
@@ -175,6 +358,7 @@ function App() {
   if (!playlist) {
     return (
       <div className="app">
+        <div className="stars"></div>
         <header>
           <h1>Our Shared Songs 💕</h1>
         </header>
@@ -188,7 +372,10 @@ function App() {
                 </button>
               </>
             ) : (
-              <p>Loading playlist...</p>
+              <div className="loading">
+                <div className="loading-heart">💕</div>
+                <p>Loading your playlist...</p>
+              </div>
             )}
           </div>
         </main>
@@ -201,45 +388,126 @@ function App() {
 
   return (
     <div className="app">
+      <div className="stars"></div>
       <header>
         <h1>Our Shared Songs 💕</h1>
-        <p>{playlist.name} ({playlist.tracks.items.length} tracks)</p>
-        {!deviceId && <p style={{ fontSize: '14px', color: '#666' }}>⚠️ Player initializing...</p>}
+        <p>{playlist.name} • {playlist.tracks.items.length} tracks</p>
+        <div className="current-user-badge" onClick={() => { setCurrentUser(null); localStorage.removeItem('current_user'); }}>
+          <span>{currentUser === 'Partner 1' ? '💜' : '💙'} {currentUser}</span>
+        </div>
+        {!deviceId && <p style={{ fontSize: '14px', color: '#999', marginTop: '8px' }}>⏳ Player initializing...</p>}
       </header>
 
       <main>
         <div className="playlist">
-          {playlist.tracks.items.map((item, index) => (
-            <div 
-              key={index} 
-              className="track-card"
-              style={{
-                backgroundColor: isTrackPlaying(item.track.uri) ? '#f0f0f0' : 'transparent',
-                border: isTrackPlaying(item.track.uri) ? '2px solid #1db954' : 'none'
-              }}
-            >
-              <img
-                src={item.track.album.images[0]?.url}
-                alt={item.track.name}
-                className="album-art"
-              />
-              <div className="track-info">
-                <h3>{item.track.name}</h3>
-                <p>{item.track.artists.map(a => a.name).join(', ')}</p>
-                {isTrackPlaying(item.track.uri) && (
-                  <p style={{ color: '#1db954', fontSize: '12px', marginTop: '5px' }}>● Now Playing</p>
+          {playlist.tracks.items.map((item, index) => {
+            const trackId = item.track.id
+            const notes = trackNotes[trackId] || []
+            const isExpanded = expandedTrack === trackId
+            const noteCount = notes.length
+
+            return (
+              <div key={index} className={`track-card ${isExpanded ? 'expanded' : ''} ${isTrackPlaying(item.track.uri) ? 'playing' : ''}`}>
+                <div className="track-main" onClick={() => setExpandedTrack(isExpanded ? null : trackId)}>
+                  <img
+                    src={item.track.album.images[0]?.url}
+                    alt={item.track.name}
+                    className="album-art"
+                  />
+                  <div className="track-info">
+                    <h3>{item.track.name}</h3>
+                    <p>{item.track.artists.map(a => a.name).join(', ')}</p>
+                    {isTrackPlaying(item.track.uri) && (
+                      <span className="now-playing-badge">♫ Now Playing</span>
+                    )}
+                    {noteCount > 0 && (
+                      <span className="note-count">{noteCount} {noteCount === 1 ? 'note' : 'notes'} 💬</span>
+                    )}
+                  </div>
+                  <button
+                    className="play-btn"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      isTrackPlaying(item.track.uri) ? player.togglePlay() : handlePlay(item.track.uri)
+                    }}
+                    disabled={!deviceId}
+                    style={{ opacity: deviceId ? 1 : 0.5 }}
+                  >
+                    {isTrackPlaying(item.track.uri) ? '⏸' : '▶'}
+                  </button>
+                </div>
+
+                {isExpanded && (
+                  <div className="notes-section">
+                    <div className="notes-list">
+                      {notes.length === 0 ? (
+                        <p className="no-notes">No notes yet! Be the first to share your thoughts 💭</p>
+                      ) : (
+                        notes.map(note => (
+                          <div key={note.id} className={`note ${note.author === 'Partner 1' ? 'partner1' : 'partner2'}`}>
+                            <div className="note-header">
+                              <span className="note-author">
+                                {note.author === 'Partner 1' ? '💜' : '💙'} {note.author}
+                              </span>
+                              <span className="note-time">{formatDate(note.timestamp)}</span>
+                              {note.author === currentUser && (
+                                <button className="delete-note" onClick={() => deleteNote(trackId, note.id)}>×</button>
+                              )}
+                            </div>
+                            {note.type === 'text' ? (
+                              <p className="note-content">{note.content}</p>
+                            ) : (
+                              <div className="voice-note">
+                                <audio controls src={note.content} />
+                                <span className="voice-duration">{formatTime(note.duration)}</span>
+                              </div>
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    <div className="add-note">
+                      <div className="text-input-row">
+                        <input
+                          type="text"
+                          placeholder={`What do you think, ${currentUser}?`}
+                          value={newMessage}
+                          onChange={(e) => setNewMessage(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && addTextNote(trackId)}
+                        />
+                        <button 
+                          className="send-btn" 
+                          onClick={() => addTextNote(trackId)}
+                          disabled={!newMessage.trim()}
+                        >
+                          💌
+                        </button>
+                      </div>
+                      
+                      <div className="voice-input-row">
+                        {isRecording ? (
+                          <>
+                            <div className="recording-indicator">
+                              <span className="recording-dot"></span>
+                              Recording... {formatTime(recordingTime)}
+                            </div>
+                            <button className="stop-record-btn" onClick={stopRecording}>
+                              ⏹ Stop
+                            </button>
+                          </>
+                        ) : (
+                          <button className="record-btn" onClick={startRecording}>
+                            🎤 Record Voice Note
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 )}
               </div>
-              <button
-                className="play-btn"
-                onClick={() => isTrackPlaying(item.track.uri) ? player.togglePlay() : handlePlay(item.track.uri)}
-                disabled={!deviceId}
-                style={{ opacity: deviceId ? 1 : 0.5 }}
-              >
-                {isTrackPlaying(item.track.uri) ? '⏸' : '▶'}
-              </button>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </main>
     </div>
