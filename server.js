@@ -1,6 +1,9 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import multer from 'multer';
+import { v4 as uuidv4 } from 'uuid';
+import { dbOperations, storageOperations } from './supabase.js';
 
 dotenv.config();
 
@@ -19,12 +22,28 @@ if (!clientId || !clientSecret) {
   console.log('✓ Spotify credentials loaded successfully');
 }
 
-app.use(cors());
-app.use(express.json());
+// Configure multer for file uploads (in-memory storage for Supabase)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB limit for voice notes
+  },
+  fileFilter: (req, file, cb) => {
+    // Accept audio files
+    if (file.mimetype.startsWith('audio/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only audio files are allowed'));
+    }
+  }
+});
 
+app.use(cors());
+app.use(express.json({ limit: '10mb' }));
+
+// Spotify token exchange endpoint
 app.post('/api/token', async (req, res) => {
   const { code, redirect_uri, code_verifier } = req.body;
-  // Use the credentials loaded at startup
   const clientId = process.env.VITE_SPOTIFY_CLIENT_ID;
   const clientSecret = process.env.VITE_SPOTIFY_CLIENT_SECRET || process.env.SPOTIFY_CLIENT_SECRET;
 
@@ -82,7 +101,165 @@ app.post('/api/token', async (req, res) => {
   }
 });
 
-app.listen(PORT, '127.0.0.1', () => {
-  console.log(`Token exchange server running on http://127.0.0.1:${PORT}`);
+// Get all notes for a specific track
+app.get('/api/notes/:trackId', async (req, res) => {
+  try {
+    const { trackId } = req.params;
+    const notes = await dbOperations.getNotesByTrackId(trackId);
+    
+    // Transform notes for frontend
+    const transformedNotes = notes.map(note => ({
+      id: note.id,
+      type: note.type,
+      content: note.type === 'text' 
+        ? note.content 
+        : storageOperations.getPublicUrl(note.voice_file_path),
+      duration: note.duration,
+      author: note.author,
+      timestamp: note.timestamp
+    }));
+    
+    res.json(transformedNotes);
+  } catch (error) {
+    console.error('Error fetching notes:', error);
+    res.status(500).json({ error: 'Failed to fetch notes', message: error.message });
+  }
 });
 
+// Get all notes (for syncing)
+app.get('/api/notes', async (req, res) => {
+  try {
+    const { after } = req.query;
+    const notes = after 
+      ? await dbOperations.getNotesAfterTimestamp(after)
+      : await dbOperations.getAllNotes();
+    
+    // Transform notes for frontend
+    const transformedNotes = notes.map(note => ({
+      id: note.id,
+      trackId: note.track_id,
+      type: note.type,
+      content: note.type === 'text' 
+        ? note.content 
+        : storageOperations.getPublicUrl(note.voice_file_path),
+      duration: note.duration,
+      author: note.author,
+      timestamp: note.timestamp
+    }));
+    
+    res.json(transformedNotes);
+  } catch (error) {
+    console.error('Error fetching all notes:', error);
+    res.status(500).json({ error: 'Failed to fetch notes', message: error.message });
+  }
+});
+
+// Add a text note
+app.post('/api/notes/text', async (req, res) => {
+  try {
+    const { trackId, content, author } = req.body;
+    
+    if (!trackId || !content || !author) {
+      return res.status(400).json({ error: 'Missing required fields: trackId, content, author' });
+    }
+    
+    const note = {
+      id: uuidv4(),
+      trackId,
+      content: content.trim(),
+      author,
+      timestamp: new Date().toISOString()
+    };
+    
+    const savedNote = await dbOperations.addTextNote(note);
+    
+    res.json({
+      id: savedNote.id,
+      type: 'text',
+      content: savedNote.content,
+      author: savedNote.author,
+      timestamp: savedNote.timestamp
+    });
+  } catch (error) {
+    console.error('Error adding text note:', error);
+    res.status(500).json({ error: 'Failed to add note', message: error.message });
+  }
+});
+
+// Add a voice note
+app.post('/api/notes/voice', upload.single('audio'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No audio file provided' });
+    }
+    
+    const { trackId, author, duration } = req.body;
+    
+    if (!trackId || !author) {
+      return res.status(400).json({ error: 'Missing required fields: trackId, author' });
+    }
+    
+    // Generate unique filename
+    const fileExtension = req.file.originalname.split('.').pop() || 'webm';
+    const filename = `${uuidv4()}-${Date.now()}.${fileExtension}`;
+    
+    // Upload to Supabase Storage
+    const filePath = await storageOperations.uploadVoiceNote(req.file.buffer, filename);
+    
+    const note = {
+      id: uuidv4(),
+      trackId,
+      voiceFilePath: filePath,
+      duration: duration ? parseInt(duration) : null,
+      author,
+      timestamp: new Date().toISOString()
+    };
+    
+    const savedNote = await dbOperations.addVoiceNote(note);
+    const publicUrl = storageOperations.getPublicUrl(savedNote.voice_file_path);
+    
+    res.json({
+      id: savedNote.id,
+      type: 'voice',
+      content: publicUrl,
+      duration: savedNote.duration,
+      author: savedNote.author,
+      timestamp: savedNote.timestamp
+    });
+  } catch (error) {
+    console.error('Error adding voice note:', error);
+    res.status(500).json({ error: 'Failed to add voice note', message: error.message });
+  }
+});
+
+// Delete a note
+app.delete('/api/notes/:noteId', async (req, res) => {
+  try {
+    const { noteId } = req.params;
+    const { author } = req.query;
+    
+    if (!author) {
+      return res.status(400).json({ error: 'Missing author parameter' });
+    }
+    
+    const deleted = await dbOperations.deleteNote(noteId, author);
+    
+    if (deleted) {
+      res.json({ success: true, message: 'Note deleted' });
+    } else {
+      res.status(404).json({ error: 'Note not found' });
+    }
+  } catch (error) {
+    console.error('Error deleting note:', error);
+    if (error.message.includes('Unauthorized')) {
+      res.status(403).json({ error: error.message });
+    } else {
+      res.status(500).json({ error: 'Failed to delete note', message: error.message });
+    }
+  }
+});
+
+app.listen(PORT, '127.0.0.1', () => {
+  console.log(`🚀 Server running on http://127.0.0.1:${PORT}`);
+  console.log(`📝 Notes API available at http://127.0.0.1:${PORT}/api/notes`);
+});

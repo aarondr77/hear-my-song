@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import './App.css'
 import { getAuthUrl, getAccessTokenFromUrl, fetchPlaylist } from './spotify'
+import { getNotesForTrack, getAllNotes, addTextNote as apiAddTextNote, addVoiceNote as apiAddVoiceNote, deleteNote as apiDeleteNote } from './api'
 
 function App() {
   const [accessToken, setAccessToken] = useState(null)
@@ -23,21 +24,95 @@ function App() {
   const mediaRecorderRef = useRef(null)
   const audioChunksRef = useRef([])
   const recordingIntervalRef = useRef(null)
+  const syncIntervalRef = useRef(null)
+  const lastSyncTimestampRef = useRef(null)
+  const [isLoadingNotes, setIsLoadingNotes] = useState(false)
 
-  // Load saved notes from localStorage
+  // Load all notes from backend when playlist is loaded
   useEffect(() => {
-    const savedNotes = localStorage.getItem('track_notes')
-    if (savedNotes) {
-      setTrackNotes(JSON.parse(savedNotes))
-    }
-  }, [])
+    if (!playlist) return
 
-  // Save notes to localStorage whenever they change
-  useEffect(() => {
-    if (Object.keys(trackNotes).length > 0) {
-      localStorage.setItem('track_notes', JSON.stringify(trackNotes))
+    const loadAllNotes = async () => {
+      setIsLoadingNotes(true)
+      try {
+        const allNotes = await getAllNotes()
+        // Group notes by track ID
+        const notesByTrack = {}
+        allNotes.forEach(note => {
+          if (!notesByTrack[note.trackId]) {
+            notesByTrack[note.trackId] = []
+          }
+          notesByTrack[note.trackId].push(note)
+        })
+        setTrackNotes(notesByTrack)
+        
+        // Set last sync timestamp to the latest note timestamp
+        if (allNotes.length > 0) {
+          const latestTimestamp = allNotes[allNotes.length - 1].timestamp
+          lastSyncTimestampRef.current = latestTimestamp
+        }
+      } catch (err) {
+        console.error('Error loading notes:', err)
+        setError('Failed to load notes. Please refresh the page.')
+      } finally {
+        setIsLoadingNotes(false)
+      }
     }
-  }, [trackNotes])
+
+    loadAllNotes()
+  }, [playlist])
+
+  // Poll for new notes every 3 seconds
+  useEffect(() => {
+    if (!playlist) return
+
+    const syncNotes = async () => {
+      try {
+        const afterTimestamp = lastSyncTimestampRef.current
+        const newNotes = await getAllNotes(afterTimestamp)
+        
+        if (newNotes.length > 0) {
+          setTrackNotes(prev => {
+            const updated = { ...prev }
+            newNotes.forEach(note => {
+              if (!updated[note.trackId]) {
+                updated[note.trackId] = []
+              }
+              // Check if note already exists (avoid duplicates)
+              if (!updated[note.trackId].some(n => n.id === note.id)) {
+                updated[note.trackId].push(note)
+                // Sort by timestamp
+                updated[note.trackId].sort((a, b) => 
+                  new Date(a.timestamp) - new Date(b.timestamp)
+                )
+              }
+            })
+            return updated
+          })
+          
+          // Update last sync timestamp
+          const latestTimestamp = newNotes[newNotes.length - 1].timestamp
+          lastSyncTimestampRef.current = latestTimestamp
+        }
+      } catch (err) {
+        console.error('Error syncing notes:', err)
+        // Don't show error to user for sync failures, just log it
+      }
+    }
+
+    // Initial sync after 1 second, then every 3 seconds
+    const initialTimeout = setTimeout(() => {
+      syncNotes()
+      syncIntervalRef.current = setInterval(syncNotes, 3000)
+    }, 1000)
+
+    return () => {
+      clearTimeout(initialTimeout)
+      if (syncIntervalRef.current) {
+        clearInterval(syncIntervalRef.current)
+      }
+    }
+  }, [playlist])
 
   // Auth initialization
   useEffect(() => {
@@ -213,14 +288,15 @@ function App() {
         }
       }
 
-      mediaRecorderRef.current.onstop = () => {
+      mediaRecorderRef.current.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: actualMimeType })
-        const reader = new FileReader()
-        reader.onloadend = () => {
-          const base64Audio = reader.result
-          addVoiceNote(expandedTrack, base64Audio)
+        
+        // Send to backend
+        try {
+          await addVoiceNote(expandedTrack, audioBlob)
+        } catch (err) {
+          setError(`Failed to save voice note: ${err.message}`)
         }
-        reader.readAsDataURL(audioBlob)
         
         stream.getTracks().forEach(track => track.stop())
       }
@@ -245,48 +321,74 @@ function App() {
     }
   }
 
-  const addTextNote = (trackId) => {
+  const addTextNote = async (trackId) => {
     if (!newMessage.trim() || !currentUser) return
     
-    const note = {
-      id: Date.now(),
-      type: 'text',
-      content: newMessage.trim(),
-      author: currentUser,
-      timestamp: new Date().toISOString()
+    const messageToSend = newMessage.trim()
+    setNewMessage('') // Clear input immediately for better UX
+    
+    try {
+      const note = await apiAddTextNote(trackId, messageToSend, currentUser)
+      
+      // Optimistically update UI
+      setTrackNotes(prev => ({
+        ...prev,
+        [trackId]: [...(prev[trackId] || []), note]
+      }))
+    } catch (err) {
+      setError(`Failed to send message: ${err.message}`)
+      setNewMessage(messageToSend) // Restore message on error
     }
-
-    setTrackNotes(prev => ({
-      ...prev,
-      [trackId]: [...(prev[trackId] || []), note]
-    }))
-    setNewMessage('')
   }
 
-  const addVoiceNote = (trackId, audioData) => {
+  const addVoiceNote = async (trackId, audioBlob) => {
     if (!currentUser) return
     
-    const note = {
-      id: Date.now(),
-      type: 'voice',
-      content: audioData,
-      duration: recordingTime,
-      author: currentUser,
-      timestamp: new Date().toISOString()
-    }
-
-    setTrackNotes(prev => ({
-      ...prev,
-      [trackId]: [...(prev[trackId] || []), note]
-    }))
+    const duration = recordingTime
     setRecordingTime(0)
+    
+    try {
+      const note = await apiAddVoiceNote(trackId, audioBlob, currentUser, duration)
+      
+      // Optimistically update UI
+      setTrackNotes(prev => ({
+        ...prev,
+        [trackId]: [...(prev[trackId] || []), note]
+      }))
+    } catch (err) {
+      setError(`Failed to save voice note: ${err.message}`)
+    }
   }
 
-  const deleteNote = (trackId, noteId) => {
+  const deleteNote = async (trackId, noteId) => {
+    if (!currentUser) return
+    
+    // Optimistically remove from UI
     setTrackNotes(prev => ({
       ...prev,
       [trackId]: (prev[trackId] || []).filter(note => note.id !== noteId)
     }))
+    
+    try {
+      await apiDeleteNote(noteId, currentUser)
+    } catch (err) {
+      // Restore note on error
+      setError(`Failed to delete note: ${err.message}`)
+      // Reload notes to restore state
+      try {
+        const allNotes = await getAllNotes()
+        const notesByTrack = {}
+        allNotes.forEach(note => {
+          if (!notesByTrack[note.trackId]) {
+            notesByTrack[note.trackId] = []
+          }
+          notesByTrack[note.trackId].push(note)
+        })
+        setTrackNotes(notesByTrack)
+      } catch (reloadErr) {
+        console.error('Error reloading notes:', reloadErr)
+      }
+    }
   }
 
   const formatTime = (seconds) => {
@@ -440,7 +542,9 @@ function App() {
                 {isExpanded && (
                   <div className="notes-section">
                     <div className="notes-list">
-                      {notes.length === 0 ? (
+                      {isLoadingNotes && notes.length === 0 ? (
+                        <p className="no-notes">Loading notes... 💭</p>
+                      ) : notes.length === 0 ? (
                         <p className="no-notes">No notes yet! Be the first to share your thoughts 💭</p>
                       ) : (
                         notes.map(note => (
@@ -459,7 +563,7 @@ function App() {
                             ) : (
                               <div className="voice-note">
                                 <audio controls src={note.content} />
-                                <span className="voice-duration">{formatTime(note.duration)}</span>
+                                <span className="voice-duration">{formatTime(note.duration || 0)}</span>
                               </div>
                             )}
                           </div>
