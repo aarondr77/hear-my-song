@@ -503,20 +503,33 @@ function App() {
   // Login screen
   if (!accessToken) {
     return (
-      <div className="app">
-        <header>
-          <h1>Our Shared Songs 💕</h1>
-          <p>A place for us to share and talk about our favorite music</p>
-          <div className="current-user-badge" onClick={() => { setCurrentUser(null); localStorage.removeItem('current_user'); }}>
-            <span>{currentUser === 'Partner 1' ? '💜' : '💙'} {currentUser}</span>
+      <div className="landing-page">
+        <div className="landing-content">
+          <div className="landing-text">
+            <p>
+              I really like You. Getting to know you has been one of the most wonderful experiences of my life. 
+              There's something special about the way we connect, the conversations we have, and the moments we share together.
+            </p>
+            <p>
+              One of my favorite things we do together is share music. There's something intimate and beautiful about 
+              discovering new songs together, or sharing tracks that mean something to us. Music has a way of bringing 
+              people closer, and I love how it's become part of our story.
+            </p>
+            <p>
+              Every song we share feels like a little piece of ourselves we're giving to each other. Whether it's a 
+              track that makes us dance, something that makes us think, or a melody that captures a feeling we can't 
+              quite put into words—each one adds to the soundtrack of our relationship.
+            </p>
+            <p>
+              I'm grateful for every moment we've spent listening together, talking about what we hear, and building 
+              this collection of shared sounds. It's more than just a playlist—it's a reflection of us, of our connection, 
+              and of all the things we're discovering about each other.
+            </p>
           </div>
-        </header>
-        <main>
-          <div className="placeholder">
-            {error && <p style={{ color: '#ff4444', marginBottom: '20px' }}>{error}</p>}
-            <button onClick={handleLogin}>Connect to Spotify</button>
-          </div>
-        </main>
+          <button className="sign-in-button" onClick={handleLogin}>
+            Sign In
+          </button>
+        </div>
       </div>
     )
   }
