@@ -9,6 +9,9 @@ const ITEM_SIZE = 2; // Size of each record/window
 const WALL_WIDTH = 10; // Total wall width in 3D units
 const WALL_HEIGHT = 6; // Total wall height in 3D units
 
+// Vertical offset to move shelves higher on the wall
+const VERTICAL_OFFSET = 0.6; // Move everything up by this amount
+
 // Calculate evenly spaced position
 function calculateEvenPosition(row: number, col: number): { x: number; y: number; z: number } {
   // Calculate center positions for evenly distributed items
@@ -25,7 +28,7 @@ function calculateEvenPosition(row: number, col: number): { x: number; y: number
   
   return {
     x: startX + col * (ITEM_SIZE + gapWidth),
-    y: startY - row * (ITEM_SIZE + gapHeight),
+    y: startY - row * (ITEM_SIZE + gapHeight) + VERTICAL_OFFSET, // Apply vertical offset
     z: 0.1, // Slightly in front of wall
   };
 }

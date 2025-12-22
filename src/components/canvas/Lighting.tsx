@@ -7,15 +7,15 @@ export function Lighting() {
 
   return (
     <>
-      {/* Warm ambient light for cozy atmosphere */}
-      <ambientLight intensity={0.5} color="#FFF8E7" />
+      {/* Lower ambient light to allow shadows to be more visible */}
+      <ambientLight intensity={0.35} color="#FFF8F5" />
       
-      {/* Main directional light - warm, soft */}
+      {/* Main directional light - warm, simulating window/overhead light */}
       <directionalLight
         ref={directionalLightRef}
-        position={[3, 8, 5]}
-        intensity={0.7}
-        color="#FFE5B4"
+        position={[4, 6, 6]}
+        intensity={0.9}
+        color="#FFEDDE"
         castShadow
         shadow-mapSize-width={2048}
         shadow-mapSize-height={2048}
@@ -25,15 +25,40 @@ export function Lighting() {
         shadow-camera-top={15}
         shadow-camera-bottom={-15}
         shadow-bias={-0.0001}
+        shadow-radius={4}
       />
       
-      {/* Fill light for softer shadows */}
+      {/* Secondary shadow-casting light from the other side for depth */}
       <directionalLight
-        position={[-3, 4, 3]}
-        intensity={0.3}
-        color="#FFF8E7"
+        position={[-5, 4, 5]}
+        intensity={0.4}
+        color="#FFE8E0"
+        castShadow
+        shadow-mapSize-width={1024}
+        shadow-mapSize-height={1024}
+        shadow-camera-far={30}
+        shadow-camera-left={-10}
+        shadow-camera-right={10}
+        shadow-camera-top={10}
+        shadow-camera-bottom={-10}
+        shadow-bias={-0.0002}
+      />
+      
+      {/* Soft overhead fill light */}
+      <directionalLight
+        position={[0, 8, 2]}
+        intensity={0.25}
+        color="#FFF5EE"
+      />
+      
+      {/* Subtle warm accent light from below */}
+      <pointLight
+        position={[0, -3, 3]}
+        intensity={0.15}
+        color="#FFDFD3"
+        distance={10}
+        decay={2}
       />
     </>
   );
 }
-
