@@ -1,6 +1,7 @@
 import { Canvas } from '@react-three/fiber';
 import { PerspectiveCamera } from '@react-three/drei';
 import { Wall } from './Wall';
+import { Floor } from './Floor';
 import { Lighting } from './Lighting';
 import { Window } from './Window';
 import { LoveLetter } from './LoveLetter';
@@ -15,11 +16,8 @@ export function SignInScene() {
       {/* Wall - extends beyond viewport */}
       <Wall position={[0, 0, 0]} size={[50, 30]} />
       
-      {/* Floor - only extends forward */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -3, 2]} receiveShadow>
-        <planeGeometry args={[50, 10]} />
-        <meshStandardMaterial color="#D2B48C" roughness={0.8} metalness={0.1} />
-      </mesh>
+      {/* Floor - detailed wooden planks with realistic grain and variation */}
+      <Floor position={[0, -3, 2]} width={50} depth={10} />
       
       {/* Window (same component as room) */}
       <Window position={[-3, 2, 0.1]} hasPlatform={true} />
