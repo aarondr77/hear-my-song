@@ -1,10 +1,61 @@
 :root {
-  font-family: 'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', -apple-system, BlinkMacSystemFont, sans-serif;
+  /* Typography - Modern Sans-Serif */
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Inter', 'Helvetica Neue', sans-serif;
   line-height: 1.6;
   font-weight: 400;
 
-  color: #2c2c2c;
-  background-color: #fefefe;
+  /* Warm Color Palette */
+  --color-warm-beige: #F5F1E8;
+  --color-warm-brown: #8B6F47;
+  --color-deep-brown: #5C4A37;
+  --color-cream-white: #FAF8F3;
+  --color-wall: #E8E6E1;
+  --color-floor: #D2B48C;
+  --color-shelf: #8B4513;
+  --color-platform: #8B7355;
+  
+  /* Accent Colors */
+  --color-spotify-green: #1DB954;
+  --color-spotify-green-hover: #1ED760;
+  --color-warm-orange: #E8A87C;
+  --color-soft-pink: #F4C2C2;
+  --color-muted-blue: #A8C5D1;
+  --color-love-letter: #FFF8DC;
+  --color-warm-golden: #FFE5B4;
+  
+  /* Text Colors */
+  --color-text-primary: #2C2C2C;
+  --color-text-secondary: #6B6B6B;
+  --color-text-light: #FFFFFF;
+  
+  /* Background Colors */
+  --color-bg-main: #F5F1E8;
+  --color-bg-modal: #FAF8F3;
+  --color-bg-now-playing: #3A2F1F;
+  --color-overlay-dark: rgba(44, 44, 44, 0.7);
+  
+  /* Spacing Scale */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-2xl: 48px;
+  
+  /* Shadows */
+  --shadow-subtle: 0 2px 4px rgba(0, 0, 0, 0.08);
+  --shadow-medium: 0 4px 12px rgba(0, 0, 0, 0.12);
+  --shadow-large: 0 8px 32px rgba(0, 0, 0, 0.15);
+  
+  /* Border Radius */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-round: 50%;
+  
+  /* Base Colors */
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-main);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;

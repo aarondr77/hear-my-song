@@ -1,0 +1,26 @@
+.notes-panel {
+  margin-top: var(--spacing-lg);
+  padding-top: var(--spacing-lg);
+  border-top: 1px solid rgba(139, 111, 71, 0.2);
+}
+
+.notes-title {
+  margin: 0 0 var(--spacing-md) 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.notes-list {
+  max-height: 300px;
+  overflow-y: auto;
+  margin-bottom: var(--spacing-md);
+}
+
+.no-notes {
+  text-align: center;
+  color: var(--color-text-secondary);
+  padding: var(--spacing-lg);
+  font-style: italic;
+}
+
