@@ -34,7 +34,7 @@ type TransformSnapshot = {
   scale: Vector3;
 };
 
-function snapTransform(m: Mesh): TransformSnapshot {
+function snapTransform(m: Mesh | Group): TransformSnapshot {
   return {
     pos: m.position.clone(),
     rot: m.rotation.clone(),
@@ -84,10 +84,10 @@ const innerEarMaterial = new MeshStandardMaterial({
 // Create a sitting tuxedo cat model facing forward (+Z direction, toward camera)
 function createCatModel(): {
   group: Group;
-  tail: Mesh | null;
+  tail: Group | null;
 } {
   const catGroup = new Group();
-  let tailMesh: Mesh | null = null;
+  let tailMesh: Group | null = null;
   
   // === BODY (sitting cat - oval shaped, slightly tilted back) - BLACK ===
   const bodyGeometry = new SphereGeometry(0.18, 10, 8); // Minimal segments
@@ -271,6 +271,9 @@ function createCatModel(): {
   catGroup.add(backRightPaw);
   
   // === TAIL (curved, coming from back) - BLACK ===
+  // Create a group to hold all tail parts so they rotate together
+  const tailGroup = new Group();
+  
   const tailCurve = new CatmullRomCurve3([
     new Vector3(0, 0.08, -0.15),
     new Vector3(0.05, 0.12, -0.22),
@@ -281,21 +284,24 @@ function createCatModel(): {
   const tailGeometry = new TubeGeometry(tailCurve, 8, 0.025, 4, false); // Minimal segments
   const tail = new Mesh(tailGeometry, blackFurMaterial);
   tail.castShadow = true;
-  tailMesh = tail;
-  catGroup.add(tail);
+  tailGroup.add(tail);
   
   // Tail tip (slightly fluffy end) - BLACK with small white tip
   const tailTipGeometry = new SphereGeometry(0.03, 4, 4); // Minimal segments
   const tailTip = new Mesh(tailTipGeometry, blackFurMaterial);
   tailTip.position.set(0.12, 0.38, -0.18);
   tailTip.castShadow = true;
-  catGroup.add(tailTip);
+  tailGroup.add(tailTip);
   
   // Small white tip at very end of tail
   const tailWhiteTipGeometry = new SphereGeometry(0.015, 4, 4); // Reduced segments
   const tailWhiteTip = new Mesh(tailWhiteTipGeometry, whiteFurMaterial);
   tailWhiteTip.position.set(0.11, 0.4, -0.17);
-  catGroup.add(tailWhiteTip);
+  tailGroup.add(tailWhiteTip);
+  
+  // Use tailGroup as the animatable tail
+  tailMesh = tailGroup;
+  catGroup.add(tailGroup);
   
   return {
     group: catGroup,
@@ -305,9 +311,7 @@ function createCatModel(): {
 
 export function PlaceholderCat({ catState }: PlaceholderCatProps) {
   const catRef = useRef<Group>(null);
-  const tailRef = useRef<Mesh | null>(null);
   const { platform, recordIndex, facing, isMoving } = catState;
-  const tailBaseRef = useRef<TransformSnapshot | null>(null);
 
   const jumpRef = useRef<{
     active: boolean;
@@ -327,21 +331,20 @@ export function PlaceholderCat({ catState }: PlaceholderCatProps) {
 
   const tmpPos = useMemo(() => new Vector3(), []);
 
-  // Create the procedural cat model
-  const catModel = useMemo(() => {
+  // Create the procedural cat model and store refs
+  const catModelData = useMemo(() => {
     const { group, tail } = createCatModel();
-    tailRef.current = tail;
     
     // Apply scale
     group.scale.set(CAT_SCALE, CAT_SCALE, CAT_SCALE);
 
     // Capture base transform for tail animation
-    if (tailRef.current) {
-      tailBaseRef.current = snapTransform(tailRef.current);
-    }
+    const tailBase = tail ? snapTransform(tail) : null;
     
-    return group;
+    return { group, tail, tailBase };
   }, []);
+  
+  const { group: catModel, tail: tailMesh, tailBase } = catModelData;
 
   const platformData = getPlatform(platform);
   if (!platformData) return null;
@@ -434,11 +437,11 @@ export function PlaceholderCat({ catState }: PlaceholderCatProps) {
 
         // Tail whips more during jump
         const pose = Math.sin(Math.PI * t); // For tail animation only
-        if (tailRef.current && tailBaseRef.current) {
-          tailRef.current.position.copy(tailBaseRef.current.pos);
-          tailRef.current.rotation.copy(tailBaseRef.current.rot);
-          tailRef.current.rotation.y += Math.sin(state.clock.elapsedTime * 9) * 0.55 * pose;
-          tailRef.current.rotation.x += Math.sin(state.clock.elapsedTime * 7) * 0.2 * pose;
+        if (tailMesh && tailBase) {
+          tailMesh.position.copy(tailBase.pos);
+          tailMesh.rotation.copy(tailBase.rot);
+          tailMesh.rotation.y += Math.sin(state.clock.elapsedTime * 9) * 0.55 * pose;
+          tailMesh.rotation.x += Math.sin(state.clock.elapsedTime * 7) * 0.2 * pose;
         }
 
         // Land / cleanup
@@ -446,9 +449,9 @@ export function PlaceholderCat({ catState }: PlaceholderCatProps) {
           jump.active = false;
           
           // Restore tail to base position
-          if (tailRef.current && tailBaseRef.current) {
-            tailRef.current.position.copy(tailBaseRef.current.pos);
-            tailRef.current.rotation.copy(tailBaseRef.current.rot);
+          if (tailMesh && tailBase) {
+            tailMesh.position.copy(tailBase.pos);
+            tailMesh.rotation.copy(tailBase.rot);
           }
         }
       } else {
@@ -461,14 +464,23 @@ export function PlaceholderCat({ catState }: PlaceholderCatProps) {
         // No rotation reset needed when idle
 
         // Idle tail sway + breathing
-        if (tailRef.current && tailBaseRef.current) {
-          tailRef.current.position.copy(tailBaseRef.current.pos);
-          tailRef.current.rotation.copy(tailBaseRef.current.rot);
+        if (tailMesh && tailBase) {
+          tailMesh.position.copy(tailBase.pos);
+          tailMesh.rotation.copy(tailBase.rot);
 
-          const amp = isMoving ? 0.35 : 0.15;
-          const spd = isMoving ? 4.5 : 1.2;
-          tailRef.current.rotation.y += Math.sin(state.clock.elapsedTime * spd) * amp;
-          tailRef.current.rotation.x += Math.sin(state.clock.elapsedTime * (spd * 0.7)) * (amp * 0.35);
+          if (isMoving) {
+            // When moving, smaller faster sway
+            const amp = 0.35;
+            const spd = 4.5;
+            tailMesh.rotation.y += Math.sin(state.clock.elapsedTime * spd) * amp;
+            tailMesh.rotation.x += Math.sin(state.clock.elapsedTime * (spd * 0.7)) * (amp * 0.35);
+          } else {
+            // When stationary, big slow swaying motion
+            const amp = 0.8; // Much larger amplitude for big motions
+            const spd = 0.6; // Slower speed for smooth, deliberate sway
+            tailMesh.rotation.y += Math.sin(state.clock.elapsedTime * spd) * amp;
+            tailMesh.rotation.x += Math.sin(state.clock.elapsedTime * (spd * 0.8)) * (amp * 0.4);
+          }
         }
 
         const breathScale = 1 + Math.sin(state.clock.elapsedTime * 2) * 0.01;
