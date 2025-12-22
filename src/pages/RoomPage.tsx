@@ -24,7 +24,7 @@ export function RoomPage({ tracks, currentUser, accessToken }: RoomPageProps) {
   const trackId = selectedTrack?.id || null;
   
   const { notes, isLoading: isLoadingNotes, createNote, deleteNote } = useNotes(trackId);
-  const { isPlaying, currentTrack, playTrack, togglePlay } = useSpotifyPlayer(accessToken);
+  const { isPlaying, currentTrack, playTrack, togglePlay, position, duration } = useSpotifyPlayer(accessToken);
 
   // Handle Space key to open modal
   useEffect(() => {
@@ -90,6 +90,8 @@ export function RoomPage({ tracks, currentUser, accessToken }: RoomPageProps) {
         track={selectedTrack}
         isOpen={isModalOpen}
         isPlaying={selectedTrack ? currentTrack?.uri === selectedTrack.uri && isPlaying : false}
+        position={selectedTrack && currentTrack?.uri === selectedTrack.uri ? position : undefined}
+        duration={selectedTrack && currentTrack?.uri === selectedTrack.uri ? duration : selectedTrack?.duration_ms}
         notes={notes}
         currentUserId={currentUser.display_name}
         isLoadingNotes={isLoadingNotes}

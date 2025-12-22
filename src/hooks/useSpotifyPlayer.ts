@@ -1,10 +1,12 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 interface SpotifyPlayerState {
   isPlaying: boolean;
   currentTrack: Spotify.Track | null;
   deviceId: string | null;
   player: Spotify.Player | null;
+  position: number; // Current position in ms
+  duration: number; // Track duration in ms
 }
 
 export function useSpotifyPlayer(accessToken: string | null) {
@@ -13,9 +15,12 @@ export function useSpotifyPlayer(accessToken: string | null) {
     currentTrack: null,
     deviceId: null,
     player: null,
+    position: 0,
+    duration: 0,
   });
   const [error, setError] = useState<string | null>(null);
   const playerRef = useRef<Spotify.Player | null>(null);
+  const positionIntervalRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!accessToken) return;
@@ -42,15 +47,21 @@ export function useSpotifyPlayer(accessToken: string | null) {
         setState((prev) => ({ ...prev, deviceId: null }));
       });
 
-      player.addListener('player_state_changed', (state) => {
-        if (!state) {
-          setState((prev) => ({ ...prev, isPlaying: false }));
+      player.addListener('player_state_changed', (playerState) => {
+        if (!playerState) {
+          setState((prev) => ({ ...prev, isPlaying: false, position: 0, duration: 0 }));
+          if (positionIntervalRef.current) {
+            clearInterval(positionIntervalRef.current);
+            positionIntervalRef.current = null;
+          }
           return;
         }
         setState((prev) => ({
           ...prev,
-          isPlaying: !state.paused,
-          currentTrack: state.track_window?.current_track || null,
+          isPlaying: !playerState.paused,
+          currentTrack: playerState.track_window?.current_track || null,
+          position: playerState.position,
+          duration: playerState.duration,
         }));
       });
 
@@ -81,8 +92,46 @@ export function useSpotifyPlayer(accessToken: string | null) {
       if (playerRef.current) {
         playerRef.current.disconnect();
       }
+      if (positionIntervalRef.current) {
+        clearInterval(positionIntervalRef.current);
+      }
     };
   }, [accessToken]);
+
+  // Separate effect for position polling
+  useEffect(() => {
+    const updatePosition = async () => {
+      if (playerRef.current && state.isPlaying) {
+        try {
+          const currentState = await playerRef.current.getCurrentState();
+          if (currentState) {
+            setState((prev) => ({
+              ...prev,
+              position: currentState.position,
+              duration: currentState.duration,
+            }));
+          }
+        } catch (err) {
+          console.error('Error getting player state:', err);
+        }
+      }
+    };
+
+    if (state.isPlaying && state.player) {
+      positionIntervalRef.current = window.setInterval(updatePosition, 1000);
+    } else {
+      if (positionIntervalRef.current) {
+        clearInterval(positionIntervalRef.current);
+        positionIntervalRef.current = null;
+      }
+    }
+
+    return () => {
+      if (positionIntervalRef.current) {
+        clearInterval(positionIntervalRef.current);
+      }
+    };
+  }, [state.isPlaying, state.player]);
 
   const playTrack = async (trackUri: string) => {
     if (!state.deviceId || !state.player || !accessToken) return;
