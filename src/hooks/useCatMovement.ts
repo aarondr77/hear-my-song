@@ -8,7 +8,7 @@ export function useCatMovement() {
   const [facing, setFacing] = useState<'left' | 'right'>('right');
   const [isMoving, setIsMoving] = useState(false);
 
-  const MOVE_DURATION_MS = 400;
+  const MOVE_DURATION_MS = 600; // matches JUMP_DURATION_S in PlaceholderCat
 
   const startMove = useCallback(() => {
     setIsMoving(true);

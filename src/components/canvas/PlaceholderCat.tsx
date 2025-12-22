@@ -11,7 +11,7 @@ interface PlaceholderCatProps {
 // Cat scale - sized to fit on shelf platforms (records are 2x2 units)
 // Cat should be clearly visible - about 0.6-0.8 units tall when sitting
 const CAT_SCALE = 1.0;
-const JUMP_DURATION_S = 0.4; // matches MOVE_DURATION_MS in useCatMovement
+const JUMP_DURATION_S = 0.6; // slightly longer to allow body animations to be visible
 const JUMP_MIN_HEIGHT = 0.18;
 const JUMP_MAX_HEIGHT = 0.42;
 
@@ -85,9 +85,17 @@ const innerEarMaterial = new MeshStandardMaterial({
 function createCatModel(): {
   group: Group;
   tail: Group | null;
+  body: Mesh;
+  head: Mesh;
+  frontLegsGroup: Group;
+  backLegsGroup: Group;
 } {
   const catGroup = new Group();
   let tailMesh: Group | null = null;
+  
+  // Create groups for animatable leg parts
+  const frontLegsGroup = new Group();
+  const backLegsGroup = new Group();
   
   // === BODY (sitting cat - oval shaped, slightly tilted back) - BLACK ===
   const bodyGeometry = new SphereGeometry(0.18, 10, 8); // Minimal segments
@@ -218,13 +226,13 @@ function createCatModel(): {
   frontLeftLeg.position.set(-0.08, -0.02, 0.1);
   frontLeftLeg.castShadow = true;
   frontLeftLeg.receiveShadow = true;
-  catGroup.add(frontLeftLeg);
+  frontLegsGroup.add(frontLeftLeg);
   
   const frontRightLeg = new Mesh(frontLegGeometry, blackFurMaterial);
   frontRightLeg.position.set(0.08, -0.02, 0.1);
   frontRightLeg.castShadow = true;
   frontRightLeg.receiveShadow = true;
-  catGroup.add(frontRightLeg);
+  frontLegsGroup.add(frontRightLeg);
   
   // === FRONT PAWS - WHITE (tuxedo "socks") ===
   const pawGeometry = new SphereGeometry(0.04, 6, 4); // Minimal segments
@@ -233,12 +241,14 @@ function createCatModel(): {
   const frontLeftPaw = new Mesh(pawGeometry, whiteFurMaterial);
   frontLeftPaw.position.set(-0.08, -0.12, 0.12);
   frontLeftPaw.castShadow = true;
-  catGroup.add(frontLeftPaw);
+  frontLegsGroup.add(frontLeftPaw);
   
   const frontRightPaw = new Mesh(pawGeometry, whiteFurMaterial);
   frontRightPaw.position.set(0.08, -0.12, 0.12);
   frontRightPaw.castShadow = true;
-  catGroup.add(frontRightPaw);
+  frontLegsGroup.add(frontRightPaw);
+  
+  catGroup.add(frontLegsGroup);
   
   // === BACK LEGS (haunches - sitting pose) - BLACK ===
   const haunchGeometry = new SphereGeometry(0.08, 8, 6); // Minimal segments
@@ -248,13 +258,13 @@ function createCatModel(): {
   leftHaunch.position.set(-0.1, 0.02, -0.05);
   leftHaunch.castShadow = true;
   leftHaunch.receiveShadow = true;
-  catGroup.add(leftHaunch);
+  backLegsGroup.add(leftHaunch);
   
   const rightHaunch = new Mesh(haunchGeometry, blackFurMaterial);
   rightHaunch.position.set(0.1, 0.02, -0.05);
   rightHaunch.castShadow = true;
   rightHaunch.receiveShadow = true;
-  catGroup.add(rightHaunch);
+  backLegsGroup.add(rightHaunch);
   
   // === BACK PAWS (tucked under) - WHITE (tuxedo "socks") ===
   const backPawGeometry = new SphereGeometry(0.035, 6, 4); // Minimal segments
@@ -263,12 +273,14 @@ function createCatModel(): {
   const backLeftPaw = new Mesh(backPawGeometry, whiteFurMaterial);
   backLeftPaw.position.set(-0.12, -0.1, 0.0);
   backLeftPaw.castShadow = true;
-  catGroup.add(backLeftPaw);
+  backLegsGroup.add(backLeftPaw);
   
   const backRightPaw = new Mesh(backPawGeometry, whiteFurMaterial);
   backRightPaw.position.set(0.12, -0.1, 0.0);
   backRightPaw.castShadow = true;
-  catGroup.add(backRightPaw);
+  backLegsGroup.add(backRightPaw);
+  
+  catGroup.add(backLegsGroup);
   
   // === TAIL (curved, coming from back) - BLACK ===
   // Create a group to hold all tail parts so they rotate together
@@ -306,6 +318,10 @@ function createCatModel(): {
   return {
     group: catGroup,
     tail: tailMesh,
+    body: body,
+    head: head,
+    frontLegsGroup: frontLegsGroup,
+    backLegsGroup: backLegsGroup,
   };
 }
 
@@ -320,6 +336,8 @@ export function PlaceholderCat({ catState }: PlaceholderCatProps) {
     end: Vector3;
     height: number;
     lastTarget: Vector3 | null;
+    startRotationY: number; // Starting rotation for smooth turning
+    targetRotationY: number; // Target rotation to face jump direction
   }>({
     active: false,
     t0: 0,
@@ -327,24 +345,54 @@ export function PlaceholderCat({ catState }: PlaceholderCatProps) {
     end: new Vector3(),
     height: JUMP_MIN_HEIGHT,
     lastTarget: null,
+    startRotationY: 0,
+    targetRotationY: 0,
   });
 
   const tmpPos = useMemo(() => new Vector3(), []);
 
   // Create the procedural cat model and store refs
   const catModelData = useMemo(() => {
-    const { group, tail } = createCatModel();
+    const { group, tail, body, head, frontLegsGroup, backLegsGroup } = createCatModel();
     
     // Apply scale
     group.scale.set(CAT_SCALE, CAT_SCALE, CAT_SCALE);
 
-    // Capture base transform for tail animation
+    // Capture base transforms for all animatable parts (following .cursorrules pattern)
     const tailBase = tail ? snapTransform(tail) : null;
+    const bodyBase = snapTransform(body);
+    const headBase = snapTransform(head);
+    const frontLegsBase = snapTransform(frontLegsGroup);
+    const backLegsBase = snapTransform(backLegsGroup);
     
-    return { group, tail, tailBase };
+    return { 
+      group, 
+      tail, 
+      tailBase,
+      body,
+      bodyBase,
+      head,
+      headBase,
+      frontLegsGroup,
+      frontLegsBase,
+      backLegsGroup,
+      backLegsBase,
+    };
   }, []);
   
-  const { group: catModel, tail: tailMesh, tailBase } = catModelData;
+  const { 
+    group: catModel, 
+    tail: tailMesh, 
+    tailBase,
+    body,
+    bodyBase,
+    head,
+    headBase,
+    frontLegsGroup,
+    frontLegsBase,
+    backLegsGroup,
+    backLegsBase,
+  } = catModelData;
 
   const platformData = getPlatform(platform);
   if (!platformData) return null;
@@ -374,10 +422,15 @@ export function PlaceholderCat({ catState }: PlaceholderCatProps) {
     if (catRef.current && !isInitializedRef.current) {
       const initialPos = new Vector3(catPosition.x, catPosition.y, catPosition.z);
       catRef.current.position.copy(initialPos);
+      // Set initial rotation based on facing direction
+      const baseYaw = 0; // cat model faces +Z by default
+      catRef.current.rotation.y = facing === 'left' ? baseYaw + Math.PI / 2 : baseYaw - Math.PI / 2;
       jumpRef.current.lastTarget = initialPos.clone();
+      jumpRef.current.startRotationY = catRef.current.rotation.y;
+      jumpRef.current.targetRotationY = catRef.current.rotation.y;
       isInitializedRef.current = true;
     }
-  }, [catPosition.x, catPosition.y, catPosition.z]);
+  }, [catPosition.x, catPosition.y, catPosition.z, facing]);
 
   // Start a jump whenever the target position changes (platform jump OR record move).
   useEffect(() => {
@@ -399,12 +452,20 @@ export function PlaceholderCat({ catState }: PlaceholderCatProps) {
     const currentPos = catRef.current?.position?.clone();
     if (!currentPos) return;
     
+    // Calculate jump direction to determine target rotation
+    const jumpDir = new Vector3().subVectors(target, currentPos).normalize();
+    // Calculate angle to face jump direction (cat faces +Z by default, so we need to adjust)
+    // For left/right movement, we want to face the direction of travel
+    const angleToTarget = Math.atan2(jumpDir.x, jumpDir.z);
+    
     jump.active = true;
     // t0 set in useFrame to the current clock time (more reliable than Date/perf).
     jump.t0 = -1;
     jump.start.copy(currentPos);
     jump.end.copy(target);
     jump.lastTarget = target.clone();
+    jump.startRotationY = catRef.current?.rotation.y ?? 0;
+    jump.targetRotationY = angleToTarget;
 
     const dist = currentPos.distanceTo(target);
     // Height scales with distance, clamped so short hops still read.
@@ -417,10 +478,6 @@ export function PlaceholderCat({ catState }: PlaceholderCatProps) {
       const jump = jumpRef.current;
       const targetPos = tmpPos.set(catPosition.x, catPosition.y, catPosition.z);
 
-      // Face the correct direction
-      const baseYaw = 0; // cat model faces +Z by default
-      catRef.current.rotation.y = facing === 'left' ? baseYaw + Math.PI / 2 : baseYaw - Math.PI / 2;
-
       // If a jump was queued, stamp start time on the first frame.
       if (jump.active && jump.t0 < 0) {
         jump.t0 = state.clock.elapsedTime;
@@ -428,15 +485,128 @@ export function PlaceholderCat({ catState }: PlaceholderCatProps) {
 
       if (jump.active && jump.t0 >= 0) {
         const t = clamp01((state.clock.elapsedTime - jump.t0) / JUMP_DURATION_S);
-        const eased = easeInOutCubic(t);
 
-        // World-space arc path
-        tmpPos.lerpVectors(jump.start, jump.end, eased);
-        tmpPos.y += jump.height * parabola01(t);
-        catRef.current.position.copy(tmpPos);
+        // === LEAP ANIMATION PHASES ===
+        // Phase 1: Prepare (0-0.15): Turn to face direction, crouch
+        // Phase 2: Leap (0.15-0.85): Arc movement with body tilt
+        // Phase 3: Land (0.85-1.0): Extend legs to absorb impact
+        
+        const PREPARE_PHASE = 0.2;  // 20% = 120ms for crouch
+        const LAND_PHASE = 0.8;    // Landing starts at 80%, giving 20% = 120ms for impact
+        
+        // Smoothly turn to face jump direction during prepare phase
+        if (t < PREPARE_PHASE) {
+          const turnT = t / PREPARE_PHASE;
+          const turnEased = easeInOutCubic(turnT);
+          catRef.current.rotation.y = jump.startRotationY + (jump.targetRotationY - jump.startRotationY) * turnEased;
+        } else {
+          catRef.current.rotation.y = jump.targetRotationY;
+        }
+        
+        // Face the correct direction when not jumping
+        const baseYaw = 0; // cat model faces +Z by default
+        if (!jump.active) {
+          catRef.current.rotation.y = facing === 'left' ? baseYaw + Math.PI / 2 : baseYaw - Math.PI / 2;
+        }
+
+        // World-space arc path (only during leap phase)
+        if (t >= PREPARE_PHASE) {
+          const leapT = clamp01((t - PREPARE_PHASE) / (LAND_PHASE - PREPARE_PHASE));
+          const leapEased = easeInOutCubic(leapT);
+          tmpPos.lerpVectors(jump.start, jump.end, leapEased);
+          tmpPos.y += jump.height * parabola01(leapT);
+          catRef.current.position.copy(tmpPos);
+        }
+
+        // === BODY ANIMATION ===
+        // Reset to base before applying relative changes (following .cursorrules)
+        body.position.copy(bodyBase.pos);
+        body.rotation.copy(bodyBase.rot);
+        head.position.copy(headBase.pos);
+        head.rotation.copy(headBase.rot);
+        frontLegsGroup.position.copy(frontLegsBase.pos);
+        frontLegsGroup.rotation.copy(frontLegsBase.rot);
+        backLegsGroup.position.copy(backLegsBase.pos);
+        backLegsGroup.rotation.copy(backLegsBase.rot);
+
+        if (t < PREPARE_PHASE) {
+          // === PREPARE PHASE: Crouch (bend knees) ===
+          // Use eased ramp-up that HOLDS at the end (not a pulse)
+          const crouchT = easeInOutCubic(t / PREPARE_PHASE);
+          const crouchAmount = crouchT * 0.15; // Ramp up and hold
+          
+          // Lower body and compress legs for the crouch
+          body.position.y -= crouchAmount * 0.5;
+          body.rotation.x += crouchAmount * 0.8; // Body hunches forward
+          
+          // Legs bend (lower position, rotate to show bend)
+          frontLegsGroup.position.y -= crouchAmount * 0.3;
+          backLegsGroup.position.y -= crouchAmount * 0.4;
+          frontLegsGroup.rotation.x += crouchAmount * 3; // Bend knees forward
+          backLegsGroup.rotation.x += crouchAmount * 2.5;
+          
+          // Head tilts down to look at landing spot
+          head.position.y -= crouchAmount * 0.2;
+          head.rotation.x += crouchAmount * 1.2;
+          
+        } else if (t < LAND_PHASE) {
+          // === LEAP PHASE: Body stretches out during arc ===
+          const leapT = (t - PREPARE_PHASE) / (LAND_PHASE - PREPARE_PHASE);
+          const leapEased = easeInOutCubic(leapT);
+          
+          // Start from crouched position, then extend
+          // Crouch amount at start of leap (full crouch), decreasing as we extend
+          const remainingCrouch = (1 - leapEased) * 0.15;
+          
+          // Body tilts based on arc phase
+          // Forward during ascent (first half), backward preparing for landing (second half)
+          const arcPhase = parabola01(leapT); // 0 -> 1 -> 0
+          const bodyTilt = (leapT < 0.5) 
+            ? leapEased * 0.4  // Tilt forward during ascent
+            : 0.4 - (leapT - 0.5) * 2 * 0.5; // Tilt back during descent
+          
+          body.position.y -= remainingCrouch * 0.3;
+          body.rotation.x -= bodyTilt;
+          
+          // Head follows body, looking ahead during leap
+          head.rotation.x -= bodyTilt * 0.8;
+          head.position.y += arcPhase * 0.05; // Slight head lift at peak
+          
+          // Legs extend during leap (stretch out behind and in front)
+          const legExtension = arcPhase * 0.12;
+          frontLegsGroup.position.y += legExtension * 0.5;
+          frontLegsGroup.position.z += legExtension * 0.3; // Reach forward
+          frontLegsGroup.rotation.x -= legExtension * 4; // Extend forward
+          
+          backLegsGroup.position.y += legExtension * 0.3;
+          backLegsGroup.position.z -= legExtension * 0.2; // Push back
+          backLegsGroup.rotation.x -= legExtension * 3; // Extend backward
+          
+        } else {
+          // === LAND PHASE: Compress to absorb impact, then recover ===
+          const landT = (t - LAND_PHASE) / (1 - LAND_PHASE);
+          
+          // Impact compression - peaks at start, then recovers
+          const impactCurve = Math.cos(landT * Math.PI * 0.5); // 1 -> 0 (compress then release)
+          const impactCompression = impactCurve * 0.12;
+          
+          // Body compresses on impact
+          body.position.y -= impactCompression * 0.4;
+          body.rotation.x += impactCompression * 0.3; // Slight forward hunch on impact
+          
+          // Legs compress to absorb shock
+          frontLegsGroup.position.y -= impactCompression * 0.5;
+          backLegsGroup.position.y -= impactCompression * 0.6;
+          frontLegsGroup.rotation.x += impactCompression * 2.5;
+          backLegsGroup.rotation.x += impactCompression * 2;
+          
+          // Head dips on impact
+          head.position.y -= impactCompression * 0.15;
+          head.rotation.x += impactCompression * 0.5;
+        }
 
         // Tail whips more during jump
-        const pose = Math.sin(Math.PI * t); // For tail animation only
+        const pose = Math.sin(Math.PI * t);
         if (tailMesh && tailBase) {
           tailMesh.position.copy(tailBase.pos);
           tailMesh.rotation.copy(tailBase.rot);
@@ -448,20 +618,42 @@ export function PlaceholderCat({ catState }: PlaceholderCatProps) {
         if (t >= 1) {
           jump.active = false;
           
-          // Restore tail to base position
+          // Keep the rotation at the landing direction (don't reset it)
+          // The rotation is already set to jump.targetRotationY, so we preserve it
+          
+          // Restore all parts to base transforms (following .cursorrules)
           if (tailMesh && tailBase) {
             tailMesh.position.copy(tailBase.pos);
             tailMesh.rotation.copy(tailBase.rot);
           }
+          body.position.copy(bodyBase.pos);
+          body.rotation.copy(bodyBase.rot);
+          head.position.copy(headBase.pos);
+          head.rotation.copy(headBase.rot);
+          frontLegsGroup.position.copy(frontLegsBase.pos);
+          frontLegsGroup.rotation.copy(frontLegsBase.rot);
+          backLegsGroup.position.copy(backLegsBase.pos);
+          backLegsGroup.rotation.copy(backLegsBase.rot);
         }
       } else {
+        // When idle (not jumping), preserve the current rotation
+        // The rotation persists from the last jump, so we don't override it
         // Not jumping: only lerp if we're close to target (to avoid interfering with jump start)
         const distToTarget = catRef.current.position.distanceTo(targetPos);
         if (distToTarget > 0.01) {
           // Only lerp if we're not already very close (prevents fighting with jump animation)
           catRef.current.position.lerp(targetPos, 0.18);
         }
-        // No rotation reset needed when idle
+
+        // Reset all parts to base transforms (following .cursorrules)
+        body.position.copy(bodyBase.pos);
+        body.rotation.copy(bodyBase.rot);
+        head.position.copy(headBase.pos);
+        head.rotation.copy(headBase.rot);
+        frontLegsGroup.position.copy(frontLegsBase.pos);
+        frontLegsGroup.rotation.copy(frontLegsBase.rot);
+        backLegsGroup.position.copy(backLegsBase.pos);
+        backLegsGroup.rotation.copy(backLegsBase.rot);
 
         // Idle tail sway + breathing
         if (tailMesh && tailBase) {
