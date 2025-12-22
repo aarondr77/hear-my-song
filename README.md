@@ -1,4 +1,4 @@
-# Hear My Song 🎵
+# Record Room
 
 A music sharing app built with React, Vite, and Spotify integration.
 
