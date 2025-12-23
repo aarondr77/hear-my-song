@@ -46,15 +46,28 @@ export interface Platform {
     up: number | null;
     down: number | null;
   };
-  type: 'shelf' | 'window';
+  type: 'shelf' | 'window' | 'floor';
   records: number[]; // Indices into playlist
 }
+
+// Floor-specific constants
+export const FLOOR_PLATFORM_ID = -1;
+export const FLOOR_Y = -3; // Matches Floor.tsx position
+export const FLOOR_Z = 2; // Matches Floor.tsx position
 
 export interface CatState {
   platform: number;
   recordIndex: number | null;
   facing: 'left' | 'right';
   isMoving: boolean;
+  floorX: number; // X position when on floor (continuous, not discrete)
+  carryingToy: boolean;
+}
+
+// Toy state for lobster toy
+export interface ToyState {
+  position: { x: number; y: number; z: number };
+  isCarried: boolean;
 }
 
 // 3D Scene types

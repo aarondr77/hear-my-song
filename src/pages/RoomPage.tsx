@@ -6,7 +6,8 @@ import { InteractionPrompt } from '../components/ui/InteractionPrompt';
 import { useCatMovement } from '../hooks/useCatMovement';
 import { useNotes } from '../hooks/useNotes';
 import { useSpotifyPlayer } from '../hooks/useSpotifyPlayer';
-import type { SpotifyTrack, SpotifyUser } from '../types';
+import type { SpotifyTrack, SpotifyUser, ToyState } from '../types';
+import { FLOOR_Y, FLOOR_Z } from '../types';
 import './RoomPage.css';
 
 interface RoomPageProps {
@@ -15,8 +16,35 @@ interface RoomPageProps {
   accessToken: string;
 }
 
+// Initial toy position on the floor
+const INITIAL_TOY_POSITION = { x: 2, y: FLOOR_Y, z: FLOOR_Z };
+
 export function RoomPage({ tracks, currentUser, accessToken }: RoomPageProps) {
-  const catState = useCatMovement({ trackCount: tracks.length });
+  // Toy state management
+  const [toyState, setToyState] = useState<ToyState>({
+    position: INITIAL_TOY_POSITION,
+    isCarried: false,
+  });
+
+  // Handlers for toy pickup and drop
+  const handlePickupToy = useCallback(() => {
+    setToyState(prev => ({ ...prev, isCarried: true }));
+  }, []);
+
+  const handleDropToy = useCallback((x: number, z: number) => {
+    setToyState({
+      position: { x, y: FLOOR_Y, z },
+      isCarried: false,
+    });
+  }, []);
+
+  const catState = useCatMovement({ 
+    trackCount: tracks.length,
+    toyState,
+    onPickupToy: handlePickupToy,
+    onDropToy: handleDropToy,
+  });
+  
   const [selectedTrackIndex, setSelectedTrackIndex] = useState<number | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   
@@ -77,6 +105,9 @@ export function RoomPage({ tracks, currentUser, accessToken }: RoomPageProps) {
   }, [deleteNote]);
 
   const showPrompt = catState.currentTrackIndex !== null && !isModalOpen;
+  
+  // Show toy prompt when near toy on floor and not carrying
+  const showToyPrompt = catState.isNearToy && !toyState.isCarried && !isModalOpen;
 
   return (
     <div className="room-page">
@@ -84,6 +115,7 @@ export function RoomPage({ tracks, currentUser, accessToken }: RoomPageProps) {
         <Room
           tracks={tracks}
           catState={catState}
+          toyState={toyState}
           onRecordClick={handleRecordClick}
         />
       </div>
@@ -91,6 +123,11 @@ export function RoomPage({ tracks, currentUser, accessToken }: RoomPageProps) {
       <InteractionPrompt
         message="to open record"
         visible={showPrompt}
+      />
+      
+      <InteractionPrompt
+        message="to pick up toy"
+        visible={showToyPrompt}
       />
 
       <RecordModal
@@ -116,4 +153,3 @@ export function RoomPage({ tracks, currentUser, accessToken }: RoomPageProps) {
     </div>
   );
 }
-

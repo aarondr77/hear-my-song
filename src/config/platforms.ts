@@ -1,4 +1,4 @@
-import { Platform } from '../types';
+import { Platform, FLOOR_PLATFORM_ID, FLOOR_Y, FLOOR_Z } from '../types';
 
 // Dynamic platform generation constants
 const ITEM_SIZE = 2; // Size of each record/window
@@ -8,6 +8,12 @@ const RECORD_SPACING = 2.2; // Space between records on a shelf
 const GAP_WIDTH = 0.5; // Gap between columns
 const GAP_HEIGHT = 0.5; // Gap between rows
 const VERTICAL_OFFSET = 0.6; // Move everything up by this amount
+
+// Floor platform constants
+export const FLOOR_BOUNDS = {
+  minX: -10,
+  maxX: 15,
+};
 
 // Calculate position for a platform at a given row and column
 function calculatePosition(row: number, col: number, isWindow: boolean = false): { x: number; y: number; z: number } {
@@ -91,6 +97,16 @@ export function generatePlatforms(trackCount: number): Record<number, Platform> 
     }
   }
   
+  // Add floor platform with special ID
+  platforms[FLOOR_PLATFORM_ID] = {
+    id: FLOOR_PLATFORM_ID,
+    grid: { row: 2, col: 0 }, // Virtual row below bottom shelves
+    position: { x: 0, y: FLOOR_Y, z: FLOOR_Z },
+    connections: { left: null, right: null, up: null, down: null },
+    type: 'floor',
+    records: [],
+  };
+  
   // Set up connections
   Object.values(platforms).forEach(platform => {
     if (platform.type === 'shelf') {
@@ -121,10 +137,14 @@ export function generatePlatforms(trackCount: number): Record<number, Platform> 
         platform.connections.up = shelfAbove?.id ?? null;
       }
       
-      // Down connection (only for top row)
+      // Down connection
       if (row === 0) {
+        // Top row: connect down to shelf below
         const shelfBelow = shelvesByRow[1].find(p => p.grid.col === col);
         platform.connections.down = shelfBelow?.id ?? null;
+      } else if (row === 1) {
+        // Bottom row: connect down to floor
+        platform.connections.down = FLOOR_PLATFORM_ID;
       }
     }
   });
@@ -138,6 +158,10 @@ export function generatePlatforms(trackCount: number): Record<number, Platform> 
   if (firstBottomShelf) {
     platforms[windowId].connections.down = firstBottomShelf.id;
   }
+  
+  // Floor platform connections: up connects to all bottom row shelves
+  // We'll handle floor movement specially in the movement hook
+  // The floor doesn't have traditional left/right connections - it uses continuous X position
   
   // Cache the result
   cachedPlatforms = platforms;
@@ -192,4 +216,42 @@ export function getPlatform(id: number, trackCount?: number): Platform | undefin
 export function getAllPlatforms(trackCount: number = 5): Platform[] {
   const platforms = generatePlatforms(trackCount);
   return Object.values(platforms);
+}
+
+// Get the floor platform
+export function getFloorPlatform(): Platform | undefined {
+  return cachedPlatforms?.[FLOOR_PLATFORM_ID];
+}
+
+// Find the closest bottom row shelf to a given X position (for jumping up from floor)
+export function findClosestBottomShelf(x: number): Platform | null {
+  if (!cachedPlatforms) return null;
+  
+  const bottomShelves = Object.values(cachedPlatforms).filter(
+    p => p.type === 'shelf' && p.grid.row === 1
+  );
+  
+  if (bottomShelves.length === 0) return null;
+  
+  // Find the shelf with the closest X position
+  let closest = bottomShelves[0];
+  let closestDist = Math.abs(x - closest.position.x);
+  
+  for (const shelf of bottomShelves) {
+    const dist = Math.abs(x - shelf.position.x);
+    if (dist < closestDist) {
+      closest = shelf;
+      closestDist = dist;
+    }
+  }
+  
+  return closest;
+}
+
+// Get all bottom row shelves (for floor-to-shelf navigation)
+export function getBottomRowShelves(): Platform[] {
+  if (!cachedPlatforms) return [];
+  return Object.values(cachedPlatforms).filter(
+    p => p.type === 'shelf' && p.grid.row === 1
+  );
 }

@@ -8,17 +8,20 @@ import { Shelf } from './Shelf';
 import { Window } from './Window';
 import { PlaceholderCat } from './PlaceholderCat';
 import { CameraFollow } from './CameraFollow';
+import { LobsterToy } from './LobsterToy';
 import { getAllPlatforms, generatePlatforms, calculateWallWidth } from '../../config/platforms';
-import type { SpotifyTrack } from '../../types';
+import type { SpotifyTrack, ToyState } from '../../types';
 import type { CatState } from '../../types';
+import { FLOOR_Y, FLOOR_Z } from '../../types';
 
 interface RoomProps {
   tracks: SpotifyTrack[];
   catState: CatState & { currentTrackIndex: number | null };
+  toyState: ToyState;
   onRecordClick?: (trackIndex: number) => void;
 }
 
-export function Room({ tracks, catState, onRecordClick }: RoomProps) {
+export function Room({ tracks, catState, toyState, onRecordClick }: RoomProps) {
   // Generate platforms dynamically based on track count
   const platforms = useMemo(() => getAllPlatforms(tracks.length), [tracks.length]);
   
@@ -47,6 +50,10 @@ export function Room({ tracks, catState, onRecordClick }: RoomProps) {
       {/* Platforms, Shelves, and Window */}
       <Suspense fallback={null}>
         {platforms.map((platform) => {
+          // Skip floor platform from shelf/window rendering
+          if (platform.type === 'floor') {
+            return null;
+          }
           if (platform.type === 'window') {
             return (
               <Window
@@ -69,9 +76,16 @@ export function Room({ tracks, catState, onRecordClick }: RoomProps) {
         })}
       </Suspense>
       
+      {/* Lobster toy on floor - only show when not being carried */}
+      {!toyState.isCarried && (
+        <LobsterToy 
+          position={[toyState.position.x, FLOOR_Y, FLOOR_Z]} 
+          isCarried={toyState.isCarried}
+        />
+      )}
+      
       {/* Cat */}
-      <PlaceholderCat catState={catState} />
+      <PlaceholderCat catState={catState} carryingToy={toyState.isCarried} />
     </Canvas>
   );
 }
-

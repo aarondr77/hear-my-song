@@ -25,8 +25,13 @@ export function CameraFollow({ catState }: CameraFollowProps) {
 
     // Calculate cat position (same logic as PlaceholderCat)
     let catX = platformData.position.x;
+    let catY = platformData.position.y;
     
-    if (platformData.type === 'shelf' && catState.recordIndex !== null && catState.recordIndex < platformData.records.length) {
+    if (platformData.type === 'floor') {
+      // On floor: use floorX for X position, lower camera Y
+      catX = catState.floorX;
+      catY = -2; // Lower Y to see floor better
+    } else if (platformData.type === 'shelf' && catState.recordIndex !== null && catState.recordIndex < platformData.records.length) {
       const recordCount = platformData.records.length;
       const RECORD_SPACING = 2.2;
       const totalWidth = (recordCount - 1) * RECORD_SPACING;
@@ -34,10 +39,10 @@ export function CameraFollow({ catState }: CameraFollowProps) {
       catX += startOffset + catState.recordIndex * RECORD_SPACING;
     }
 
-    // Camera follows cat's X position, but maintains fixed Y and Z
+    // Camera follows cat's X position, adjusts Y for floor/shelves
     // Smoothly interpolate to keep cat centered in view
-    targetPosition.current.set(catX, 0, 8);
-  }, [catState.platform, catState.recordIndex]);
+    targetPosition.current.set(catX, catY * 0.3, 8);
+  }, [catState.platform, catState.recordIndex, catState.floorX]);
 
   // Smoothly interpolate camera position
   useFrame((_state, delta) => {

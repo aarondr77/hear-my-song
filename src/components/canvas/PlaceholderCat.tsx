@@ -3,9 +3,11 @@ import { CatmullRomCurve3, Color, ConeGeometry, CylinderGeometry, Euler, Group, 
 import { useFrame } from '@react-three/fiber';
 import { getPlatform } from '../../config/platforms';
 import type { CatState } from '../../types';
+import { FLOOR_Y, FLOOR_Z } from '../../types';
 
 interface PlaceholderCatProps {
   catState: CatState & { currentTrackIndex: number | null };
+  carryingToy?: boolean;
 }
 
 // Cat scale - sized to fit on shelf platforms (records are 2x2 units)
@@ -82,6 +84,13 @@ const noseMaterial = new MeshStandardMaterial({
 const innerEarMaterial = new MeshStandardMaterial({
   color: new Color('#E8B4B8'), // Pink inner ear
   roughness: 0.8,
+  metalness: 0.0,
+});
+
+// Material for carried toy (red lobster)
+const carriedToyMaterial = new MeshStandardMaterial({
+  color: new Color('#C41E3A'), // Deep red lobster color
+  roughness: 0.9,
   metalness: 0.0,
 });
 
@@ -329,9 +338,9 @@ function createCatModel(): {
   };
 }
 
-export function PlaceholderCat({ catState }: PlaceholderCatProps) {
+export function PlaceholderCat({ catState, carryingToy = false }: PlaceholderCatProps) {
   const catRef = useRef<Group>(null);
-  const { platform, recordIndex, facing, isMoving } = catState;
+  const { platform, recordIndex, facing, isMoving, floorX } = catState;
 
   const jumpRef = useRef<{
     active: boolean;
@@ -412,10 +421,16 @@ export function PlaceholderCat({ catState }: PlaceholderCatProps) {
   const platformData = getPlatform(platform);
   if (!platformData) return null;
 
-  // Calculate cat position
+  // Calculate cat position based on platform type
   let catPosition = { ...platformData.position };
   
-  if (platformData.type === 'shelf' && recordIndex !== null && recordIndex < platformData.records.length) {
+  if (platformData.type === 'floor') {
+    // On floor: use floorX for continuous X position
+    // Floor Y and Z are fixed constants
+    catPosition.x = floorX;
+    catPosition.y = FLOOR_Y + 0.15; // Offset to sit on floor surface
+    catPosition.z = FLOOR_Z + 0.3; // Slightly in front of floor back edge
+  } else if (platformData.type === 'shelf' && recordIndex !== null && recordIndex < platformData.records.length) {
     // Position cat next to the current record on the shelf
     // Records are now 2x2 and spaced 2.2 apart
     const recordCount = platformData.records.length;
@@ -423,13 +438,24 @@ export function PlaceholderCat({ catState }: PlaceholderCatProps) {
     const totalWidth = (recordCount - 1) * RECORD_SPACING;
     const startOffset = -totalWidth / 2;
     catPosition.x += startOffset + recordIndex * RECORD_SPACING;
+    
+    // Position cat on the platform (platform is at y - 1.1 from record center)
+    // Adjust Y so the cat sits properly on the platform
+    catPosition.y = platformData.position.y - 1.1 + 0.15;
+    // Move cat forward (positive Z) so it's in front of the record, not behind
+    catPosition.z = platformData.position.z + 0.6;
+  } else if (platformData.type === 'window') {
+    // Window positioning
+    catPosition.y = platformData.position.y - 1.1 + 0.15;
+    catPosition.z = platformData.position.z + 0.6;
+  } else {
+    // Default shelf positioning without record
+    catPosition.y = platformData.position.y - 1.1 + 0.15;
+    catPosition.z = platformData.position.z + 0.6;
   }
-
-  // Position cat on the platform (platform is at y - 1.1 from record center)
-  // Adjust Y so the cat sits properly on the platform
-  catPosition.y = platformData.position.y - 1.1 + 0.15;
-  // Move cat forward (positive Z) so it's in front of the record, not behind
-  catPosition.z = platformData.position.z + 0.6;
+  
+  // Track if we're on the floor for special handling
+  const isOnFloor = platformData.type === 'floor';
 
   // Initialize position on mount - set to current target
   const isInitializedRef = useRef(false);
@@ -447,7 +473,11 @@ export function PlaceholderCat({ catState }: PlaceholderCatProps) {
     }
   }, [catPosition.x, catPosition.y, catPosition.z, facing]);
 
+  // Track previous platform for detecting floor-to-platform or platform-to-floor transitions
+  const prevPlatformRef = useRef<number>(platform);
+  
   // Start a jump whenever the target position changes (platform jump OR record move).
+  // Skip jump animation for continuous floor movement.
   useEffect(() => {
     if (!isInitializedRef.current) return; // Wait for initialization
     
@@ -457,15 +487,34 @@ export function PlaceholderCat({ catState }: PlaceholderCatProps) {
     
     if (!last) {
       jump.lastTarget = target.clone();
+      prevPlatformRef.current = platform;
       return;
     }
     
-    if (last.distanceTo(target) < 0.0001) return;
+    if (last.distanceTo(target) < 0.0001) {
+      prevPlatformRef.current = platform;
+      return;
+    }
 
     // CRITICAL: Use the ACTUAL current position, not the last target
     // This ensures we jump from where the cat actually is, not where it should be
     const currentPos = catRef.current?.position?.clone();
     if (!currentPos) return;
+    
+    // Check if this is continuous floor movement (same floor platform, just X changed)
+    const wasOnFloor = getPlatform(prevPlatformRef.current)?.type === 'floor';
+    const isNowOnFloor = platformData.type === 'floor';
+    const platformChanged = platform !== prevPlatformRef.current;
+    
+    // Update platform tracking
+    prevPlatformRef.current = platform;
+    
+    // Skip jump animation for continuous floor walking (no platform change, just X movement)
+    if (wasOnFloor && isNowOnFloor && !platformChanged) {
+      // Just update the target position, no jump animation
+      jump.lastTarget = target.clone();
+      return;
+    }
     
     // Calculate jump direction to determine target rotation
     const jumpDir = new Vector3().subVectors(target, currentPos).normalize();
@@ -491,8 +540,11 @@ export function PlaceholderCat({ catState }: PlaceholderCatProps) {
 
     const dist = currentPos.distanceTo(target);
     // Height scales with distance, clamped so short hops still read.
-    jump.height = Math.max(JUMP_MIN_HEIGHT, Math.min(JUMP_MAX_HEIGHT, 0.12 + dist * 0.35));
-  }, [platform, recordIndex, catPosition.x, catPosition.y, catPosition.z]);
+    // For floor jumps (up/down), use more height
+    const isVerticalJump = Math.abs(target.y - currentPos.y) > 0.5;
+    const baseHeight = isVerticalJump ? 0.3 : 0.12;
+    jump.height = Math.max(JUMP_MIN_HEIGHT, Math.min(JUMP_MAX_HEIGHT, baseHeight + dist * 0.35));
+  }, [platform, recordIndex, catPosition.x, catPosition.y, catPosition.z, platformData.type]);
 
   // Animation and movement
   useFrame((state) => {
@@ -808,11 +860,23 @@ export function PlaceholderCat({ catState }: PlaceholderCatProps) {
             windowHang.phase = 'none';
           }
           
-          // Not jumping: only lerp if we're close to target (to avoid interfering with jump start)
-          const distToTarget = catRef.current.position.distanceTo(targetPos);
-          if (distToTarget > 0.01) {
-            // Only lerp if we're not already very close (prevents fighting with jump animation)
-            catRef.current.position.lerp(targetPos, 0.18);
+          // Update rotation based on facing direction (for floor movement)
+          const baseYaw = 0;
+          const targetRotation = facing === 'left' ? baseYaw + Math.PI / 2 : baseYaw - Math.PI / 2;
+          // Smoothly interpolate rotation
+          catRef.current.rotation.y += (targetRotation - catRef.current.rotation.y) * 0.15;
+          
+          // Handle floor walking - smooth position updates
+          if (isOnFloor) {
+            // Faster lerp for responsive floor movement
+            catRef.current.position.lerp(targetPos, 0.25);
+          } else {
+            // Not jumping: only lerp if we're close to target (to avoid interfering with jump start)
+            const distToTarget = catRef.current.position.distanceTo(targetPos);
+            if (distToTarget > 0.01) {
+              // Only lerp if we're not already very close (prevents fighting with jump animation)
+              catRef.current.position.lerp(targetPos, 0.18);
+            }
           }
 
           // Reset all parts to base transforms (following .cursorrules)
@@ -828,6 +892,23 @@ export function PlaceholderCat({ catState }: PlaceholderCatProps) {
           backLegsGroup.position.copy(backLegsBase.pos);
           backLegsGroup.rotation.copy(backLegsBase.rot);
           backLegsGroup.scale.copy(backLegsBase.scale);
+
+          // Walking animation when moving on floor
+          if (isOnFloor && isMoving) {
+            const walkSpeed = 8;
+            const walkTime = state.clock.elapsedTime * walkSpeed;
+            
+            // Leg animation - alternating front/back
+            const legSwing = Math.sin(walkTime) * 0.3;
+            frontLegsGroup.rotation.x += legSwing;
+            backLegsGroup.rotation.x -= legSwing;
+            
+            // Slight body bob
+            body.position.y += Math.abs(Math.sin(walkTime * 2)) * 0.02;
+            
+            // Head bob
+            head.position.y += Math.abs(Math.sin(walkTime * 2 + 0.5)) * 0.01;
+          }
 
           // Idle tail sway + breathing
           if (tailMesh && tailBase) {
@@ -862,6 +943,10 @@ export function PlaceholderCat({ catState }: PlaceholderCatProps) {
     return [catPosition.x, catPosition.y, catPosition.z] as [number, number, number];
   }, []); // Only set once on mount
 
+  // Mouth position for carrying toy (relative to cat group, adjusted for scale)
+  // Cat head is at y=0.42, muzzle at z=0.17, so mouth is slightly below and forward
+  const mouthPosition: [number, number, number] = [0, 0.32, 0.25];
+
   return (
     <group ref={catRef} position={initialPosition}>
       <primitive 
@@ -869,6 +954,31 @@ export function PlaceholderCat({ catState }: PlaceholderCatProps) {
         castShadow 
         receiveShadow
       />
+      {/* Render simplified lobster in mouth when carrying */}
+      {carryingToy && (
+        <group position={mouthPosition} rotation={[0, Math.PI / 2, 0]} scale={0.22}>
+          {/* Simplified lobster body */}
+          <mesh castShadow>
+            <sphereGeometry args={[0.4, 8, 6]} />
+            <primitive object={carriedToyMaterial} attach="material" />
+          </mesh>
+          {/* Left claw */}
+          <mesh position={[-0.5, 0, 0.3]} castShadow>
+            <sphereGeometry args={[0.2, 6, 4]} />
+            <primitive object={carriedToyMaterial} attach="material" />
+          </mesh>
+          {/* Right claw */}
+          <mesh position={[0.5, 0, 0.3]} castShadow>
+            <sphereGeometry args={[0.2, 6, 4]} />
+            <primitive object={carriedToyMaterial} attach="material" />
+          </mesh>
+          {/* Tail */}
+          <mesh position={[0, 0, -0.5]} castShadow>
+            <sphereGeometry args={[0.25, 6, 4]} />
+            <primitive object={carriedToyMaterial} attach="material" />
+          </mesh>
+        </group>
+      )}
     </group>
   );
 }
