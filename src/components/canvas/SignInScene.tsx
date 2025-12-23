@@ -7,11 +7,24 @@ import { LoveLetter } from './LoveLetter';
 
 interface SignInSceneProps {
   onEnter?: () => void;
+  onReady?: () => void;
 }
 
-export function SignInScene({ onEnter }: SignInSceneProps) {
+export function SignInScene({ onEnter, onReady }: SignInSceneProps) {
   return (
-    <Canvas shadows>
+    <Canvas 
+      shadows
+      onCreated={() => {
+        // Scene is ready - notify parent after a brief delay to ensure first frame is rendered
+        if (onReady) {
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              onReady();
+            });
+          });
+        }
+      }}
+    >
       <PerspectiveCamera makeDefault position={[0, 0, 8]} fov={60} />
       
       <directionalLight
