@@ -24,6 +24,7 @@ export function useSpotifyPlayer(accessToken: string | null, options?: UseSpotif
   });
   const [error, setError] = useState<string | null>(null);
   const playerRef = useRef<Spotify.Player | null>(null);
+  const deviceIdRef = useRef<string | null>(null);
   const positionIntervalRef = useRef<number | null>(null);
   // Track previous state to detect when a track naturally ends
   const prevStateRef = useRef<{ trackUri: string | null; isPlaying: boolean }>({
@@ -54,11 +55,13 @@ export function useSpotifyPlayer(accessToken: string | null, options?: UseSpotif
 
       player.addListener('ready', ({ device_id }) => {
         console.log('Spotify player ready, device ID:', device_id);
+        deviceIdRef.current = device_id;
         setState((prev) => ({ ...prev, deviceId: device_id }));
       });
 
       player.addListener('not_ready', () => {
         console.log('Spotify player not ready');
+        deviceIdRef.current = null;
         setState((prev) => ({ ...prev, deviceId: null }));
       });
 
@@ -234,16 +237,25 @@ export function useSpotifyPlayer(accessToken: string | null, options?: UseSpotif
   };
 
   const togglePlay = async () => {
-    if (!state.player || !state.deviceId) {
-      console.warn('Player not ready for toggle');
+    const currentPlayer = playerRef.current;
+    const currentDeviceId = deviceIdRef.current;
+    
+    if (!currentPlayer || !currentDeviceId) {
+      console.warn('Player not ready for toggle', { 
+        hasPlayer: !!currentPlayer, 
+        hasDeviceId: !!currentDeviceId 
+      });
       return;
     }
+    
     try {
-      await state.player.activateElement();
-      await state.player.togglePlay();
+      await currentPlayer.activateElement();
+      await currentPlayer.togglePlay();
     } catch (err) {
       console.error('Error toggling play:', err);
       setError(err instanceof Error ? err.message : 'Toggle play error');
+      // Re-throw so calling code knows it failed
+      throw err;
     }
   };
 

@@ -260,7 +260,13 @@ export function RoomPage({ tracks, currentUser, accessToken }: RoomPageProps) {
       <NowPlayingBar
         track={currentTrack ? tracks.find((t) => t.uri === currentTrack.uri) || null : null}
         isPlaying={isPlaying}
-        onPlayPause={togglePlay}
+        onPlayPause={async () => {
+          try {
+            await togglePlay();
+          } catch (err) {
+            console.error('Failed to toggle play:', err);
+          }
+        }}
       />
     </div>
   );
