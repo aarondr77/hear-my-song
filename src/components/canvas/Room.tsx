@@ -100,7 +100,7 @@ export function Room({ tracks, catState, toyState, hatState, onRecordClick, isZo
       {/* Lobster toy on floor - only show when not being carried */}
       {!toyState.isCarried && (
         <LobsterToy 
-          position={[toyState.position.x, FLOOR_Y, FLOOR_Z]} 
+          position={[toyState.position.x, FLOOR_Y + .05, FLOOR_Z]} 
           isCarried={toyState.isCarried}
         />
       )}
@@ -108,7 +108,7 @@ export function Room({ tracks, catState, toyState, hatState, onRecordClick, isZo
       {/* Baseball hat on floor - only show when not being worn */}
       {!hatState.isWorn && (
         <BaseballHat 
-          position={[hatState.position.x, FLOOR_Y, FLOOR_Z]} 
+          position={[hatState.position.x, FLOOR_Y + .2, FLOOR_Z]} 
           isWorn={hatState.isWorn}
         />
       )}
