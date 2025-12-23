@@ -5,7 +5,6 @@ import {
   Mesh,
   MeshStandardMaterial,
   CylinderGeometry,
-  SphereGeometry,
   TubeGeometry,
   CatmullRomCurve3,
   Vector3,

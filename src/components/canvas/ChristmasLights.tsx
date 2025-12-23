@@ -30,6 +30,13 @@ const ITEM_SIZE = 2;
 // Base intensity for point lights (pulsed in animation)
 const BASE_LIGHT_INTENSITY = 1;
 
+// Colors that should NOT have point lights (for performance)
+// Yellow and blue bulbs will still glow via emissive material but won't cast light
+const NO_POINT_LIGHT_COLORS = new Set([
+  '#FFE500', // yellow/gold
+  '#3399FF', // blue
+]);
+
 export function ChristmasLights({ 
   platforms,
   zOffset = 0.4 // Position in front of records
@@ -288,15 +295,17 @@ export function ChristmasLights({
             />
           </mesh>
           
-          {/* Actual point light that illuminates the scene */}
-          <pointLight
-            ref={(el) => { if (el) lightRefs.current[index] = el; }}
-            color={bulb.color}
-            intensity={BASE_LIGHT_INTENSITY}
-            distance={4}
-            decay={2}
-            position={[0, -0.06, 0.05]} // Center of bulb, slightly forward
-          />
+          {/* Point light only for select colors (yellow/blue disabled for performance) */}
+          {!NO_POINT_LIGHT_COLORS.has(bulb.color) && (
+            <pointLight
+              ref={(el) => { if (el) lightRefs.current[index] = el; }}
+              color={bulb.color}
+              intensity={BASE_LIGHT_INTENSITY}
+              distance={4}
+              decay={2}
+              position={[0, -0.06, 0.05]} // Center of bulb, slightly forward
+            />
+          )}
         </group>
       ))}
     </group>

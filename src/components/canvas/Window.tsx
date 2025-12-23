@@ -67,27 +67,27 @@ function Cloud({ initialPosition, speed, scale, bounds }: {
     <group ref={cloudRef} position={initialPosition}>
       {/* Fluffy cloud made of flattened spheres (scaled z to 0.1 so they don't extend forward) */}
       <mesh position={[0, 0, 0]} scale={[scale, scale, scale * 0.1]} renderOrder={1}>
-        <sphereGeometry args={[0.15, 16, 16]} />
+        <sphereGeometry args={[0.15, 8, 8]} />
         <meshBasicMaterial color="#ffffff" depthWrite={true} />
       </mesh>
       <mesh position={[0.12, 0.03, 0]} scale={[scale * 0.9, scale * 0.9, scale * 0.1]} renderOrder={1}>
-        <sphereGeometry args={[0.12, 16, 16]} />
+        <sphereGeometry args={[0.12, 8, 8]} />
         <meshBasicMaterial color="#ffffff" depthWrite={true} />
       </mesh>
       <mesh position={[-0.1, 0.02, 0]} scale={[scale * 0.85, scale * 0.85, scale * 0.1]} renderOrder={1}>
-        <sphereGeometry args={[0.11, 16, 16]} />
+        <sphereGeometry args={[0.11, 8, 8]} />
         <meshBasicMaterial color="#ffffff" depthWrite={true} />
       </mesh>
       <mesh position={[0.06, -0.04, 0]} scale={[scale * 0.75, scale * 0.75, scale * 0.1]} renderOrder={1}>
-        <sphereGeometry args={[0.1, 16, 16]} />
+        <sphereGeometry args={[0.1, 8, 8]} />
         <meshBasicMaterial color="#ffffff" depthWrite={true} />
       </mesh>
       <mesh position={[-0.06, -0.03, 0]} scale={[scale * 0.7, scale * 0.7, scale * 0.1]} renderOrder={1}>
-        <sphereGeometry args={[0.09, 16, 16]} />
+        <sphereGeometry args={[0.09, 8, 8]} />
         <meshBasicMaterial color="#ffffff" depthWrite={true} />
       </mesh>
       <mesh position={[0.18, 0, 0]} scale={[scale * 0.65, scale * 0.65, scale * 0.1]} renderOrder={1}>
-        <sphereGeometry args={[0.08, 16, 16]} />
+        <sphereGeometry args={[0.08, 8, 8]} />
         <meshBasicMaterial color="#ffffff" depthWrite={true} />
       </mesh>
     </group>
