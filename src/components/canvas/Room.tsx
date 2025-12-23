@@ -13,6 +13,7 @@ import { LobsterToy } from './LobsterToy';
 import { ChristmasLights } from './ChristmasLights';
 import { FloorLamp } from './FloorLamp';
 import { ArcLamp } from './ArcLamp';
+import { ShelfLamp } from './ShelfLamp';
 import { getAllPlatforms, generatePlatforms, calculateWallWidth } from '../../config/platforms';
 import type { SpotifyTrack, ToyState } from '../../types';
 import type { CatState } from '../../types';
@@ -109,6 +110,10 @@ export function Room({ tracks, catState, toyState, onRecordClick, isZoomed, zoom
       
       {/* Funky arc lamp - right side */}
       <ArcLamp position={[10, FLOOR_Y, FLOOR_Z + 0.5]} />
+      
+      {/* Small shelf lamp at row 1, col 4 (on shelf next to medal case) */}
+      {/* Position: col 4 x=6, row 1 shelf surface y≈-1.35, z=0.4 in front */}
+      <ShelfLamp position={[4, -1.4, 0.8]} lampPostColor="#1e4005" lightColor="#ba5d9d" />
     </Canvas>
   );
 }
