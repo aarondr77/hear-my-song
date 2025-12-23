@@ -31,7 +31,7 @@ export function MedalCase({ position = [0, 0, 0] }: MedalCaseProps) {
   const Z_FRONT = FRAME_DEPTH / 2;
 
   // Medal dimensions
-  const MEDAL_RADIUS = 0.35;
+  const MEDAL_RADIUS = 0.25;
   const MEDAL_THICKNESS = 0.04;
   const RIBBON_WIDTH = 0.25;
   const RIBBON_LENGTH = 0.5;
@@ -40,7 +40,7 @@ export function MedalCase({ position = [0, 0, 0] }: MedalCaseProps) {
   const PLAQUE_WIDTH = CASE_WIDTH * 0.85;
   const PLAQUE_HEIGHT = 0.3;
   const PLAQUE_DEPTH = 0.02;
-  const PLAQUE_TEXT = "First Place\nBest Cat";
+  const PLAQUE_TEXT = "The most athletic\n person I know";
 
   // Rich aged wood - warm golden brown
   const woodMaterial = useMemo(() => ({
@@ -305,45 +305,41 @@ export function MedalCase({ position = [0, 0, 0] }: MedalCaseProps) {
 
       {/* === GOLD MEDAL === */}
       <group position={[0, CASE_HEIGHT / 2 - RIBBON_LENGTH - MEDAL_RADIUS - 0.15, Z_FRONT + CASE_DEPTH + 0.03]}>
-        {/* Medal body - cylinder */}
-        <mesh castShadow receiveShadow>
+        {/* Medal body - flat disc facing forward */}
+        <mesh castShadow receiveShadow rotation={[Math.PI / 2, 0, 0]}>
           <cylinderGeometry args={[MEDAL_RADIUS, MEDAL_RADIUS, MEDAL_THICKNESS, 32]} />
           <meshStandardMaterial {...brightGoldMaterial} />
         </mesh>
         
-        {/* Medal rim - torus */}
-        <mesh castShadow receiveShadow rotation={[Math.PI / 2, 0, 0]}>
-          <torusGeometry args={[MEDAL_RADIUS - 0.02, 0.025, 16, 32]} />
+        {/* Medal outer rim - raised edge */}
+        <mesh castShadow receiveShadow>
+          <torusGeometry args={[MEDAL_RADIUS - 0.015, 0.025, 16, 32]} />
           <meshStandardMaterial {...goldMaterial} />
         </mesh>
         
         {/* Inner decorative ring */}
-        <mesh castShadow receiveShadow rotation={[Math.PI / 2, 0, 0]}>
-          <torusGeometry args={[MEDAL_RADIUS * 0.6, 0.015, 16, 32]} />
+        <mesh castShadow receiveShadow>
+          <torusGeometry args={[MEDAL_RADIUS * 0.65, 0.012, 16, 32]} />
           <meshStandardMaterial {...antiqueGoldMaterial} />
         </mesh>
 
-        {/* Center emblem - torch/flame shape using simple geometry */}
-        <group position={[0, MEDAL_THICKNESS / 2 + 0.005, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          {/* Torch base */}
-          <mesh castShadow receiveShadow position={[0, -0.08, 0]}>
-            <boxGeometry args={[0.04, 0.12, 0.02]} />
-            <meshStandardMaterial {...antiqueGoldMaterial} />
-          </mesh>
-          {/* Torch cup */}
-          <mesh castShadow receiveShadow position={[0, 0.02, 0]}>
-            <boxGeometry args={[0.08, 0.04, 0.02]} />
-            <meshStandardMaterial {...antiqueGoldMaterial} />
-          </mesh>
-          {/* Flame */}
-          <mesh castShadow receiveShadow position={[0, 0.1, 0]}>
-            <coneGeometry args={[0.04, 0.1, 8]} />
-            <meshStandardMaterial {...goldMaterial} />
-          </mesh>
-        </group>
+        {/* "#1" text on medal face */}
+        <Text
+          position={[0, 0, MEDAL_THICKNESS / 2 + 0.01]}
+          fontSize={0.22}
+          color="#8B6914"
+          anchorX="center"
+          anchorY="middle"
+          textAlign="center"
+          fontWeight="bold"
+          outlineWidth={0.008}
+          outlineColor="#5C4A0A"
+        >
+          #1
+        </Text>
         
         {/* Medal ring at top for ribbon attachment */}
-        <mesh castShadow receiveShadow position={[0, MEDAL_RADIUS - 0.02, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <mesh castShadow receiveShadow position={[0, MEDAL_RADIUS - 0.02, 0]}>
           <torusGeometry args={[0.04, 0.015, 8, 16]} />
           <meshStandardMaterial {...goldMaterial} />
         </mesh>
