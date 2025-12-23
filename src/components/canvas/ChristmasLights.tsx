@@ -76,13 +76,21 @@ export function ChristmasLights({
     const baseY = betweenRowsY;
     
     // Hardcoded variation patterns for organic look (not random, but not uniform)
+    // These arrays cycle through when there are more shelves than patterns
+    
     // Dip amounts for gaps between shelves - varies the sag depth
-    const dipPatterns = [0.45, 0.18, 0.5, 0.12, 0.38, 0.28, 0.42, 0.2];
+    const dipPatterns = [
+      0.45, 0.18, 0.5, 0.12, 0.38, 0.28, 0.42, 0.2,
+      0.35, 0.22, 0.48, 0.15, 0.4, 0.25, 0.32, 0.52,
+    ];
     // Horizontal offset for gap bulbs - shifts slightly left or right of center
-    const gapXOffsets = [0.15, -0.12, 0.08, -0.18, 0.1, -0.08, 0.14, -0.1];
+    const gapXOffsets = [
+      0.15, -0.12, 0.08, -0.18, 0.1, -0.08, 0.14, -0.1,
+      -0.14, 0.06, -0.16, 0.12, -0.05, 0.18, -0.09, 0.11,
+    ];
     // Y offsets for shelf bulbs - some hang a bit lower/higher
     const shelfYOffsets = [
-      [-0.08, 0.06],   // shelf 0: left bulb down, right bulb up - noticeable difference
+      [-0.08, 0.06],   // shelf 0: left bulb down, right bulb up
       [0.1, -0.05],    // shelf 1: left high, right low
       [-0.04, 0.08],   // shelf 2
       [0.07, -0.08],   // shelf 3
@@ -90,17 +98,33 @@ export function ChristmasLights({
       [0.05, -0.07],   // shelf 5
       [-0.03, 0.06],   // shelf 6
       [0.08, -0.04],   // shelf 7
+      [0.04, 0.09],    // shelf 8
+      [-0.09, -0.03],  // shelf 9
+      [0.06, -0.1],    // shelf 10
+      [-0.05, 0.07],   // shelf 11
+      [0.09, 0.02],    // shelf 12
+      [-0.07, -0.06],  // shelf 13
+      [0.03, 0.08],    // shelf 14
+      [-0.1, 0.05],    // shelf 15
     ];
     // X nudge for shelf bulbs - shifts bulb position slightly
     const shelfXNudges = [
       [0.12, -0.1],    // shelf 0: more pronounced shifts
-      [-0.15, 0.08],   // shelf 1: left bulb shifted left, right shifted right
+      [-0.15, 0.08],   // shelf 1
       [0.06, 0.12],    // shelf 2
       [-0.1, -0.06],   // shelf 3
       [0.08, -0.12],   // shelf 4
       [-0.05, 0.1],    // shelf 5
       [0.1, -0.04],    // shelf 6
       [-0.08, 0.07],   // shelf 7
+      [0.14, 0.03],    // shelf 8
+      [-0.06, -0.11],  // shelf 9
+      [0.04, 0.14],    // shelf 10
+      [-0.12, 0.05],   // shelf 11
+      [0.09, -0.08],   // shelf 12
+      [-0.04, 0.12],   // shelf 13
+      [0.11, -0.06],   // shelf 14
+      [-0.09, 0.09],   // shelf 15
     ];
     
     // Build path that runs between the two rows with organic draping

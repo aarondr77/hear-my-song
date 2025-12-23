@@ -13,8 +13,6 @@ import type { SpotifyTrack, SpotifyUser, ToyState } from '../types';
 import { FLOOR_Y, FLOOR_Z } from '../types';
 import './RoomPage.css';
 
-// Medal grid position - must match platforms.ts
-const MEDAL_COL = 3;
 
 interface RoomPageProps {
   tracks: SpotifyTrack[];
@@ -70,25 +68,13 @@ export function RoomPage({ tracks, currentUser, accessToken }: RoomPageProps) {
     };
   }, [medalPlatform]);
 
-  // Check if cat is on or near the medal case (can zoom in on medal)
-  // Cat can be on the medal platform itself OR on the shelf directly below
+  // Check if cat is on the medal case (can zoom in on medal)
   const isNearMedal = useMemo(() => {
     const currentPlatform = getPlatform(catState.platform);
     if (!currentPlatform) return false;
     
-    // Cat is on the medal case itself
-    if (currentPlatform.type === 'medal') {
-      return true;
-    }
-    
-    // Cat is on shelf directly below medal (row 1, same column as medal)
-    if (currentPlatform.type === 'shelf' && 
-        currentPlatform.grid.row === 1 && 
-        currentPlatform.grid.col === MEDAL_COL) {
-      return true;
-    }
-    
-    return false;
+    // Only trigger when cat is on the medal platform itself
+    return currentPlatform.type === 'medal';
   }, [catState.platform]);
   
   // Only fetch notes when modal is open
