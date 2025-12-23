@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Room } from '../components/canvas/Room';
 import { RecordModal } from '../components/ui/RecordModal';
 import { NowPlayingBar } from '../components/ui/NowPlayingBar';
@@ -8,9 +8,13 @@ import { HelpModal } from '../components/ui/HelpModal';
 import { useCatMovement } from '../hooks/useCatMovement';
 import { useNotes } from '../hooks/useNotes';
 import { useSpotifyPlayer } from '../hooks/useSpotifyPlayer';
+import { getMedalPlatform, getPlatform } from '../config/platforms';
 import type { SpotifyTrack, SpotifyUser, ToyState } from '../types';
 import { FLOOR_Y, FLOOR_Z } from '../types';
 import './RoomPage.css';
+
+// Medal grid position - must match platforms.ts
+const MEDAL_COL = 3;
 
 interface RoomPageProps {
   tracks: SpotifyTrack[];
@@ -50,15 +54,48 @@ export function RoomPage({ tracks, currentUser, accessToken }: RoomPageProps) {
   const [selectedTrackIndex, setSelectedTrackIndex] = useState<number | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
+  const [isMedalZoomed, setIsMedalZoomed] = useState(false);
   
   const selectedTrack = selectedTrackIndex !== null ? tracks[selectedTrackIndex] : null;
   const trackId = selectedTrack?.id || null;
+  
+  // Get medal platform position for zoom target
+  const medalPlatform = useMemo(() => getMedalPlatform(), []);
+  const zoomTarget = useMemo(() => {
+    if (!medalPlatform) return undefined;
+    return {
+      x: medalPlatform.position.x,
+      y: medalPlatform.position.y,
+      z: medalPlatform.position.z,
+    };
+  }, [medalPlatform]);
+
+  // Check if cat is on or near the medal case (can zoom in on medal)
+  // Cat can be on the medal platform itself OR on the shelf directly below
+  const isNearMedal = useMemo(() => {
+    const currentPlatform = getPlatform(catState.platform);
+    if (!currentPlatform) return false;
+    
+    // Cat is on the medal case itself
+    if (currentPlatform.type === 'medal') {
+      return true;
+    }
+    
+    // Cat is on shelf directly below medal (row 1, same column as medal)
+    if (currentPlatform.type === 'shelf' && 
+        currentPlatform.grid.row === 1 && 
+        currentPlatform.grid.col === MEDAL_COL) {
+      return true;
+    }
+    
+    return false;
+  }, [catState.platform]);
   
   // Only fetch notes when modal is open
   const { notes, isLoading: isLoadingNotes, createNote, deleteNote } = useNotes(trackId, isModalOpen);
   const { isPlaying, currentTrack, playTrack, togglePlay, position, duration } = useSpotifyPlayer(accessToken);
 
-  // Handle Space key to open modal
+  // Handle Space key to open modal or zoom medal
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Don't prevent default if user is typing in an input field
@@ -67,16 +104,32 @@ export function RoomPage({ tracks, currentUser, accessToken }: RoomPageProps) {
         return;
       }
       
-      if (e.key === ' ' && catState.currentTrackIndex !== null) {
+      if (e.key === ' ') {
         e.preventDefault();
-        setSelectedTrackIndex(catState.currentTrackIndex);
-        setIsModalOpen(true);
+        
+        // If already zoomed on medal, exit zoom
+        if (isMedalZoomed) {
+          setIsMedalZoomed(false);
+          return;
+        }
+        
+        // If near medal, zoom in on it
+        if (isNearMedal && !isModalOpen) {
+          setIsMedalZoomed(true);
+          return;
+        }
+        
+        // Otherwise, open record modal if on a record
+        if (catState.currentTrackIndex !== null && !isModalOpen) {
+          setSelectedTrackIndex(catState.currentTrackIndex);
+          setIsModalOpen(true);
+        }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [catState.currentTrackIndex]);
+  }, [catState.currentTrackIndex, isNearMedal, isMedalZoomed, isModalOpen]);
 
   const handleRecordClick = useCallback((trackIndex: number) => {
     setSelectedTrackIndex(trackIndex);
@@ -107,10 +160,16 @@ export function RoomPage({ tracks, currentUser, accessToken }: RoomPageProps) {
     await deleteNote(noteId, author);
   }, [deleteNote]);
 
-  const showPrompt = catState.currentTrackIndex !== null && !isModalOpen;
+  const showPrompt = catState.currentTrackIndex !== null && !isModalOpen && !isMedalZoomed && !isNearMedal;
   
   // Show toy prompt when near toy on floor and not carrying
-  const showToyPrompt = catState.isNearToy && !toyState.isCarried && !isModalOpen;
+  const showToyPrompt = catState.isNearToy && !toyState.isCarried && !isModalOpen && !isMedalZoomed;
+  
+  // Show medal prompt when near medal (not zoomed in yet)
+  const showMedalPrompt = isNearMedal && !isMedalZoomed && !isModalOpen;
+  
+  // Show exit prompt when zoomed in on medal
+  const showMedalExitPrompt = isMedalZoomed;
 
   return (
     <div className="room-page">
@@ -122,6 +181,8 @@ export function RoomPage({ tracks, currentUser, accessToken }: RoomPageProps) {
           catState={catState}
           toyState={toyState}
           onRecordClick={handleRecordClick}
+          isZoomed={isMedalZoomed}
+          zoomTarget={zoomTarget}
         />
       </div>
 
@@ -133,6 +194,16 @@ export function RoomPage({ tracks, currentUser, accessToken }: RoomPageProps) {
       <InteractionPrompt
         message="to pick up toy"
         visible={showToyPrompt}
+      />
+      
+      <InteractionPrompt
+        message="to view medal"
+        visible={showMedalPrompt}
+      />
+      
+      <InteractionPrompt
+        message="to exit"
+        visible={showMedalExitPrompt}
       />
 
       <RecordModal

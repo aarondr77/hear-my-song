@@ -45,6 +45,10 @@ function calculatePosition(row: number, col: number, isWindow: boolean = false):
 let cachedPlatforms: Record<number, Platform> | null = null;
 let cachedTrackCount: number = 0;
 
+// Medal case position in grid (row 0, column 3 = first row, three in from left)
+const MEDAL_ROW = 0;
+const MEDAL_COL = 3;
+
 // Generate platforms dynamically based on track count
 export function generatePlatforms(trackCount: number): Record<number, Platform> {
   // Return cached platforms if track count hasn't changed
@@ -68,16 +72,34 @@ export function generatePlatforms(trackCount: number): Record<number, Platform> 
   };
   
   // Generate shelves in 2 rows, extending to the right
-  // Distribute tracks: first to top row, then bottom row, alternating columns
+  // Special items (medal) are placed at specific positions, tracks fill remaining slots
   const ROWS = 2;
   const shelvesByRow: Record<number, Platform[]> = { 0: [], 1: [] };
+  let medalId: number | null = null;
   
-  // Calculate how many columns we need
-  const columnsNeeded = Math.ceil(trackCount / ROWS);
+  // Calculate how many columns we need (accounting for medal taking one slot)
+  // Medal is at row 0, col 3, so it uses one slot in the top row
+  const columnsNeeded = Math.ceil((trackCount + 1) / ROWS); // +1 for medal slot
   
-  // Create shelves column by column
+  // Create platforms column by column
   for (let col = 1; col <= columnsNeeded; col++) {
     for (let row = 0; row < ROWS; row++) {
+      // Check if this is the medal position
+      if (row === MEDAL_ROW && col === MEDAL_COL) {
+        // Create medal platform instead of shelf
+        medalId = platformId++;
+        platforms[medalId] = {
+          id: medalId,
+          grid: { row, col },
+          position: calculatePosition(row, col),
+          connections: { left: null, right: null, up: null, down: null },
+          type: 'medal',
+          records: [], // Medal has no records
+        };
+        shelvesByRow[row].push(platforms[medalId]);
+        continue; // Don't assign a track to this position
+      }
+      
       if (trackIndex >= trackCount) break;
       
       const shelfId = platformId++;
@@ -107,41 +129,62 @@ export function generatePlatforms(trackCount: number): Record<number, Platform> 
     records: [],
   };
   
-  // Set up connections
+  // Helper to find a platform (shelf or medal) in a row at or near a column
+  const findPlatformInRow = (row: number, col: number, direction: 'left' | 'right' | 'exact'): Platform | undefined => {
+    const platformsInRow = shelvesByRow[row] || [];
+    
+    if (direction === 'exact') {
+      return platformsInRow.find(p => p.grid.col === col);
+    }
+    
+    if (direction === 'left') {
+      // Find rightmost platform with col < target col
+      return platformsInRow
+        .filter(p => p.grid.col < col)
+        .sort((a, b) => b.grid.col - a.grid.col)[0];
+    } else {
+      // Find leftmost platform with col > target col  
+      return platformsInRow
+        .filter(p => p.grid.col > col)
+        .sort((a, b) => a.grid.col - b.grid.col)[0];
+    }
+  };
+
+  // Set up connections for shelves and medal (all navigable platforms)
   Object.values(platforms).forEach(platform => {
-    if (platform.type === 'shelf') {
+    if (platform.type === 'shelf' || platform.type === 'medal') {
       const { row, col } = platform.grid;
       
       // Left connection
       if (col === 1) {
-        // First column: connect to window if top row, or shelf above if bottom row
+        // First column: connect to window if top row, or platform above if bottom row
         if (row === 0) {
           platform.connections.left = windowId;
         } else {
-          const shelfAbove = shelvesByRow[0].find(p => p.grid.col === col);
-          platform.connections.left = shelfAbove?.id ?? null;
+          const platformAbove = findPlatformInRow(0, col, 'exact');
+          platform.connections.left = platformAbove?.id ?? null;
         }
       } else {
-        // Other columns: connect to shelf in same row, previous column
-        const leftShelf = shelvesByRow[row].find(p => p.grid.col === col - 1);
-        platform.connections.left = leftShelf?.id ?? null;
+        // Other columns: connect to platform in same row, previous column
+        const leftPlatform = findPlatformInRow(row, col, 'left');
+        platform.connections.left = leftPlatform?.id ?? null;
       }
       
       // Right connection
-      const rightShelf = shelvesByRow[row].find(p => p.grid.col === col + 1);
-      platform.connections.right = rightShelf?.id ?? null;
+      const rightPlatform = findPlatformInRow(row, col, 'right');
+      platform.connections.right = rightPlatform?.id ?? null;
       
       // Up connection (only for bottom row)
       if (row === 1) {
-        const shelfAbove = shelvesByRow[0].find(p => p.grid.col === col);
-        platform.connections.up = shelfAbove?.id ?? null;
+        const platformAbove = findPlatformInRow(0, col, 'exact');
+        platform.connections.up = platformAbove?.id ?? null;
       }
       
       // Down connection
       if (row === 0) {
-        // Top row: connect down to shelf below
-        const shelfBelow = shelvesByRow[1].find(p => p.grid.col === col);
-        platform.connections.down = shelfBelow?.id ?? null;
+        // Top row: connect down to platform below
+        const platformBelow = findPlatformInRow(1, col, 'exact');
+        platform.connections.down = platformBelow?.id ?? null;
       } else if (row === 1) {
         // Bottom row: connect down to floor
         platform.connections.down = FLOOR_PLATFORM_ID;
@@ -168,6 +211,12 @@ export function generatePlatforms(trackCount: number): Record<number, Platform> 
   cachedTrackCount = trackCount;
   
   return platforms;
+}
+
+// Get medal platform (useful for zoom functionality)
+export function getMedalPlatform(): Platform | undefined {
+  if (!cachedPlatforms) return undefined;
+  return Object.values(cachedPlatforms).find(p => p.type === 'medal');
 }
 
 // Calculate wall width based on platforms

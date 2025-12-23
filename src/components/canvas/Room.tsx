@@ -6,6 +6,7 @@ import { Floor } from './Floor';
 import { Lighting } from './Lighting';
 import { Shelf } from './Shelf';
 import { Window } from './Window';
+import { MedalCase } from './MedalCase';
 import { PlaceholderCat } from './PlaceholderCat';
 import { CameraFollow } from './CameraFollow';
 import { LobsterToy } from './LobsterToy';
@@ -19,9 +20,11 @@ interface RoomProps {
   catState: CatState & { currentTrackIndex: number | null };
   toyState: ToyState;
   onRecordClick?: (trackIndex: number) => void;
+  isZoomed?: boolean;
+  zoomTarget?: { x: number; y: number; z: number };
 }
 
-export function Room({ tracks, catState, toyState, onRecordClick }: RoomProps) {
+export function Room({ tracks, catState, toyState, onRecordClick, isZoomed, zoomTarget }: RoomProps) {
   // Generate platforms dynamically based on track count
   const platforms = useMemo(() => getAllPlatforms(tracks.length), [tracks.length]);
   
@@ -36,8 +39,8 @@ export function Room({ tracks, catState, toyState, onRecordClick }: RoomProps) {
     <Canvas shadows>
       <PerspectiveCamera makeDefault position={[0, 0, 8]} fov={60} />
       
-      {/* Camera follows cat */}
-      <CameraFollow catState={catState} />
+      {/* Camera follows cat (or zooms to target) */}
+      <CameraFollow catState={catState} isZoomed={isZoomed} zoomTarget={zoomTarget} />
       
       <Lighting />
       
@@ -47,7 +50,7 @@ export function Room({ tracks, catState, toyState, onRecordClick }: RoomProps) {
       {/* Floor - width matches wall width */}
       <Floor position={[0, -3, 2]} width={wallSize[0]} depth={10} />
       
-      {/* Platforms, Shelves, and Window */}
+      {/* Platforms, Shelves, Window, and Medal Case */}
       <Suspense fallback={null}>
         {platforms.map((platform) => {
           // Skip floor platform from shelf/window rendering
@@ -60,6 +63,13 @@ export function Room({ tracks, catState, toyState, onRecordClick }: RoomProps) {
                 key={platform.id}
                 position={[platform.position.x, platform.position.y, platform.position.z]}
                 hasPlatform={true}
+              />
+            );
+          } else if (platform.type === 'medal') {
+            return (
+              <MedalCase
+                key={platform.id}
+                position={[platform.position.x, platform.position.y, platform.position.z]}
               />
             );
           } else {

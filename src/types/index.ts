@@ -46,7 +46,7 @@ export interface Platform {
     up: number | null;
     down: number | null;
   };
-  type: 'shelf' | 'window' | 'floor';
+  type: 'shelf' | 'window' | 'floor' | 'medal';
   records: number[]; // Indices into playlist
 }
 
