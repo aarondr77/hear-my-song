@@ -22,12 +22,26 @@ export function NotesPanel({
     await onCreateNote(content, currentUserId);
   };
 
-  const handleDeleteNote = async (noteId: string) => {
-    const note = notes.find((n) => n.id === noteId);
-    if (note) {
-      await onDeleteNote(noteId, note.author);
+  // Determine unique names and assign partners
+  // First unique name = Partner 1 (left, black), second = Partner 2 (right, blue)
+  // Any additional names = Partner 2
+  const getPartnerAssignment = () => {
+    const uniqueNames = Array.from(new Set(notes.map(note => note.author)));
+    const partnerMap = new Map<string, 'partner1' | 'partner2'>();
+    
+    if (uniqueNames.length > 0) {
+      partnerMap.set(uniqueNames[0], 'partner1');
     }
+    
+    // All other names (including second, third, etc.) are partner2
+    for (let i = 1; i < uniqueNames.length; i++) {
+      partnerMap.set(uniqueNames[i], 'partner2');
+    }
+    
+    return partnerMap;
   };
+
+  const partnerMap = getPartnerAssignment();
 
   return (
     <div className="notes-panel">
@@ -37,14 +51,13 @@ export function NotesPanel({
         {isLoading && notes.length === 0 ? (
           <p className="no-notes">Loading notes...</p>
         ) : notes.length === 0 ? (
-          <p className="no-notes">No notes yet! Be the first to share your thoughts 💭</p>
+          <p className="no-notes"></p>
         ) : (
           notes.map((note) => (
             <NoteCard
               key={note.id}
               note={note}
-              isOwnNote={note.author === currentUserId}
-              onDelete={note.author === currentUserId ? () => handleDeleteNote(note.id) : undefined}
+              partnerClass={partnerMap.get(note.author) || 'partner2'}
             />
           ))
         )}

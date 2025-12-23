@@ -15,8 +15,12 @@
 .notes-list {
   flex: 1;
   overflow-y: auto;
-  margin-bottom: var(--spacing-md);
+  margin-bottom: var(--spacing-xl);
   min-height: 0;
+  /* Handwritten notes layout - allow natural spacing */
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
 }
 
 .no-notes {

@@ -7,11 +7,10 @@ interface NoteCardProps {
     content: string;
     created_at: string;
   };
-  isOwnNote: boolean;
-  onDelete?: () => void;
+  partnerClass: 'partner1' | 'partner2';
 }
 
-export function NoteCard({ note, isOwnNote, onDelete }: NoteCardProps) {
+export function NoteCard({ note, partnerClass }: NoteCardProps) {
   const formatDate = (isoString: string) => {
     const date = new Date(isoString);
     return date.toLocaleDateString('en-US', {
@@ -22,18 +21,22 @@ export function NoteCard({ note, isOwnNote, onDelete }: NoteCardProps) {
     });
   };
 
-  // Generate a consistent rotation based on note ID for visual variety
-  const rotation = (note.id.charCodeAt(0) + note.id.charCodeAt(note.id.length - 1)) % 7 - 3; // -3 to +3 degrees
+  // Generate a consistent slight rotation for handwritten feel (-2 to +2 degrees)
+  const rotation = (note.id.charCodeAt(0) + note.id.charCodeAt(note.id.length - 1)) % 5 - 2;
 
   return (
-    <div className="note-card" style={{ transform: `rotate(${rotation}deg)` }}>
+    <div className={`note-card note-card-${partnerClass}`} style={{ transform: `rotate(${rotation}deg)` }}>
       <div className="note-header">
-        <span className="note-author">{note.author}</span>
-        <span className="note-time">{formatDate(note.created_at)}</span>
-        {isOwnNote && onDelete && (
-          <button className="delete-note" onClick={onDelete} title="Delete note">
-            ×
-          </button>
+        {partnerClass === 'partner2' ? (
+          <>
+            <span className="note-time">{formatDate(note.created_at)}</span>
+            <span className="note-author">{note.author}</span>
+          </>
+        ) : (
+          <>
+            <span className="note-author">{note.author}</span>
+            <span className="note-time">{formatDate(note.created_at)}</span>
+          </>
         )}
       </div>
       <p className="note-content">{note.content}</p>

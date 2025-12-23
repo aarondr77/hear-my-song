@@ -2,15 +2,17 @@ import { useState, useEffect, useCallback } from 'react';
 import { notesOperations } from '../lib/supabase';
 import type { Note } from '../types';
 
-export function useNotes(trackId: string | null) {
+export function useNotes(trackId: string | null, enabled: boolean = true) {
   const [notes, setNotes] = useState<Note[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Fetch notes for a track
   const fetchNotes = useCallback(async () => {
-    if (!trackId) {
-      setNotes([]);
+    if (!trackId || !enabled) {
+      if (!enabled) {
+        setNotes([]);
+      }
       return;
     }
 
@@ -25,23 +27,17 @@ export function useNotes(trackId: string | null) {
     } finally {
       setIsLoading(false);
     }
-  }, [trackId]);
+  }, [trackId, enabled]);
 
-  // Initial fetch
+  // Only fetch when enabled and trackId changes
   useEffect(() => {
-    fetchNotes();
-  }, [fetchNotes]);
-
-  // Poll for updates every 3 seconds (Phase 1)
-  useEffect(() => {
-    if (!trackId) return;
-
-    const interval = setInterval(() => {
+    if (enabled && trackId) {
       fetchNotes();
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, [trackId, fetchNotes]);
+    } else if (!enabled) {
+      // Clear notes when disabled
+      setNotes([]);
+    }
+  }, [enabled, trackId, fetchNotes]);
 
   // Create a new note
   const createNote = useCallback(async (content: string, author: string) => {

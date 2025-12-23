@@ -1,122 +1,146 @@
 .note-card {
-  /* Handwritten paper taped to sleeve */
-  background: 
-    repeating-linear-gradient(
-      0deg,
-      #fef9e7 0px,
-      #fef9e7 1px,
-      #fef8e3 1px,
-      #fef8e3 2px
-    ),
-    linear-gradient(135deg, #fff8dc 0%, #fef9e7 100%);
-  background-size: 100% 2px, 100% 100%;
-  border-radius: 4px;
-  padding: var(--spacing-md);
-  margin-bottom: var(--spacing-md);
-  box-shadow: 
-    2px 2px 8px rgba(0, 0, 0, 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  /* Handwritten note directly on the sleeve - no paper background */
+  background: transparent;
+  padding: var(--spacing-sm) var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
   position: relative;
-  border: 1px solid rgba(139, 111, 71, 0.2);
-  /* Slight irregular edges */
-  clip-path: polygon(
-    0% 2px,
-    2px 0%,
-    calc(100% - 2px) 0%,
-    100% 2px,
-    100% calc(100% - 2px),
-    calc(100% - 2px) 100%,
-    2px 100%,
-    0% calc(100% - 2px)
-  );
   transition: transform 0.2s ease;
+  /* Handwritten feel - slight irregular positioning */
+  margin-left: 0;
+  margin-right: auto;
+  max-width: 100%;
+}
+
+/* Partner 1 - left aligned */
+.note-card-partner1 {
+  margin-left: 0;
+  margin-right: auto;
+  text-align: left;
+  align-self: flex-start;
+}
+
+/* Partner 2 - right aligned */
+.note-card-partner2 {
+  margin-left: auto;
+  margin-right: 0;
+  text-align: right;
+  align-self: flex-end;
+  width: 100%;
 }
 
 .note-card:hover {
-  transform: rotate(0deg) scale(1.02);
+  transform: rotate(0deg);
   z-index: 10;
 }
 
-/* Tape strips at corners */
-.note-card::before,
-.note-card::after {
-  content: '';
-  position: absolute;
-  width: 30px;
-  height: 15px;
-  background: rgba(255, 255, 255, 0.7);
-  opacity: 0.8;
-  border: 1px solid rgba(200, 200, 200, 0.5);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-  z-index: 1;
+/* Partner 1 - Black pen, Caveat font */
+.note-card-partner1 {
+  color: #2c2c2c;
 }
 
-/* Top-left tape */
-.note-card::before {
-  top: -5px;
-  left: 10px;
-  transform: rotate(-15deg);
+.note-card-partner1 .note-author,
+.note-card-partner1 .note-content {
+  color: #2c2c2c;
+  font-family: 'Caveat', 'Kalam', cursive;
 }
 
-/* Bottom-right tape */
-.note-card::after {
-  bottom: -5px;
-  right: 10px;
-  transform: rotate(15deg);
+.note-card-partner1 .note-time {
+  color: #2c2c2c;
+  opacity: 0.7;
+  font-family: 'Caveat', 'Kalam', cursive;
+}
+
+/* Partner 2 - Dark blue pen, Indie Flower font */
+.note-card-partner2 {
+  color: #1a4d7a;
+}
+
+.note-card-partner2 .note-author,
+.note-card-partner2 .note-content {
+  color: #1a4d7a;
+  font-family: 'Indie Flower', 'Kalam', cursive;
+}
+
+.note-card-partner2 .note-time {
+  color: #1a4d7a;
+  opacity: 0.7;
+  font-family: 'Indie Flower', 'Kalam', cursive;
 }
 
 .note-header {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--spacing-sm);
+  align-items: baseline;
+  margin-bottom: var(--spacing-xs);
   font-size: 0.9em;
+  gap: var(--spacing-sm);
+}
+
+/* Partner 1 header - left aligned */
+.note-card-partner1 .note-header {
+  justify-content: flex-start;
+  width: 100%;
+}
+
+/* Partner 2 header - right aligned to container edge */
+.note-card-partner2 .note-header {
+  justify-content: flex-end;
+  width: 100%;
+  /* Keep normal direction, just align to right */
 }
 
 .note-author {
   font-weight: 600;
-  color: #2c2c2c;
-  font-family: 'Kalam', 'Caveat', 'Indie Flower', 'Comic Sans MS', cursive;
-  font-size: 0.9rem;
+  font-size: 1.1rem;
   position: relative;
   z-index: 2;
 }
 
 .note-time {
-  color: #8b6f47;
-  font-size: 0.8em;
-  font-family: 'Kalam', 'Caveat', 'Indie Flower', 'Comic Sans MS', cursive;
+  font-size: 0.75em;
   position: relative;
   z-index: 2;
+  opacity: 0.7;
+  font-style: italic;
+  white-space: nowrap;
 }
 
 .delete-note {
   background: transparent;
   border: none;
-  color: #999;
-  font-size: 24px;
+  color: rgba(139, 111, 71, 0.4);
+  font-size: 20px;
   cursor: pointer;
   padding: 0 8px;
   line-height: 1;
-  transition: color 0.2s;
+  transition: all 0.2s;
   position: relative;
   z-index: 3;
   font-family: Arial, sans-serif;
+  opacity: 0.6;
 }
 
 .delete-note:hover {
   color: #e74c3c;
+  opacity: 1;
+  transform: scale(1.2);
 }
 
 .note-content {
   margin: 0;
-  color: #2c2c2c;
-  line-height: 1.8;
+  line-height: 1.9;
   white-space: pre-wrap;
   word-wrap: break-word;
-  font-family: 'Kalam', 'Caveat', 'Indie Flower', 'Comic Sans MS', cursive;
-  font-size: 0.95rem;
+  font-size: 1.1rem;
   position: relative;
   z-index: 2;
+  /* Handwritten feel - slight letter spacing variation */
+  letter-spacing: 0.3px;
+  /* Make it look like it was written with a pen */
+  text-shadow: 0.5px 0.5px 0.5px rgba(0, 0, 0, 0.1);
+}
+
+/* Partner 2 content - right aligned */
+.note-card-partner2 .note-content {
+  text-align: right;
 }
 

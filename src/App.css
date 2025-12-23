@@ -406,10 +406,10 @@ main {
 }
 
 .notes-list {
-  max-height: 300px;
   overflow-y: auto;
   margin-bottom: 1rem;
   padding-right: 0.5rem;
+  flex-grow: 1;
 }
 
 .notes-list::-webkit-scrollbar {
@@ -509,7 +509,6 @@ main {
   align-items: center;
   gap: 0.8rem;
   margin-bottom: 0.6rem;
-  padding-bottom: 0.5rem;
   position: relative;
 }
 
@@ -517,6 +516,8 @@ main {
   flex-direction: row-reverse;
 }
 
+/* Removed dotted line between header and content */
+/*
 .note-header::after {
   content: '';
   position: absolute;
@@ -533,6 +534,7 @@ main {
   );
   opacity: 0.3;
 }
+*/
 
 .note-author {
   font-size: 0.9rem;
