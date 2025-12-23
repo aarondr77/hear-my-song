@@ -15,17 +15,20 @@ interface ChristmasLightsProps {
 // Classic Christmas light colors (matching reference image)
 const BULB_COLORS = [
   '#00E5E5', // cyan
-  '#FFD700', // yellow/gold
-  '#00CC44', // green
+  '#FFE500', // yellow/gold
+  '#00FF55', // green
   '#FF3333', // red
   '#FF00FF', // magenta
-  '#00CC44', // green
+  '#00FF55', // green
   '#3399FF', // blue
-  '#FFD700', // yellow
+  '#FFE500', // yellow
 ];
 
 // Shelf/item dimensions (should match platforms.ts)
 const ITEM_SIZE = 2;
+
+// Base intensity for point lights (pulsed in animation)
+const BASE_LIGHT_INTENSITY = 1;
 
 export function ChristmasLights({ 
   platforms,
@@ -237,8 +240,8 @@ export function ChristmasLights({
     // Also pulse the point lights slightly
     lightRefs.current.forEach((light, i) => {
       if (light) {
-        const pulse = 0.35 + Math.sin(time * 1.5 + i * 0.5) * 0.15;
-        light.intensity = pulse;
+        const pulse = 0.7 + Math.sin(time * 1.5 + i * 0.5) * 0.3;
+        light.intensity = BASE_LIGHT_INTENSITY * pulse;
       }
     });
   });
@@ -289,7 +292,7 @@ export function ChristmasLights({
           <pointLight
             ref={(el) => { if (el) lightRefs.current[index] = el; }}
             color={bulb.color}
-            intensity={0.4}
+            intensity={BASE_LIGHT_INTENSITY}
             distance={4}
             decay={2}
             position={[0, -0.06, 0.05]} // Center of bulb, slightly forward

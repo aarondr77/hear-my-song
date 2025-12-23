@@ -24,8 +24,8 @@ export function Lighting() {
 
   return (
     <>
-      {/* Lower ambient light to allow shadows to be more visible */}
-      <ambientLight intensity={0.2} color="#FFF8F5" />
+      {/* Lower ambient light to allow shadows to be more visible
+      <ambientLight intensity={0.2} color="#FFF8F5" /> */}
       
       {/* Key light: more centered and closer to wall for more direct lighting */}
       <directionalLight
