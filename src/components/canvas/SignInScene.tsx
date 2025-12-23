@@ -2,7 +2,6 @@ import { Canvas } from '@react-three/fiber';
 import { PerspectiveCamera } from '@react-three/drei';
 import { Wall } from './Wall';
 import { Floor } from './Floor';
-import { Lighting } from './Lighting';
 import { Window } from './Window';
 import { LoveLetter } from './LoveLetter';
 
@@ -11,7 +10,11 @@ export function SignInScene() {
     <Canvas shadows>
       <PerspectiveCamera makeDefault position={[0, 0, 8]} fov={60} />
       
-      <Lighting />
+      <directionalLight
+        position={[10, 2, 2]}
+        intensity={0.15}
+        color="#FFFFFF"
+      />  
       
       {/* Wall - extends beyond viewport */}
       <Wall position={[0, 0, 0]} size={[50, 30]} />
@@ -27,13 +30,13 @@ export function SignInScene() {
       
       {/* Warm golden spotlight pointing at love letter */}
       <spotLight
-        position={[2, 5, 3]}
+        position={[8, 10, 3]}
         angle={0.4}
-        penumbra={0.5}
-        intensity={1.5}
+        penumbra={0.2}
+        intensity={200.0}
         color="#FFE5B4"
         castShadow
-        target-position={[2, 2, 0]}
+        target-position={[5, 2, 0]}
       />
     </Canvas>
   );
