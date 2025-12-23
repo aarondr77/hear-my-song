@@ -89,6 +89,76 @@
 - **Group Organization**: Use `<group>` to organize related elements with shared transforms
 - **Position Props**: Accept position as prop with sensible defaults: `position = [0, 0, 0]`
 
+## Animating Body Parts & Hierarchical Models
+
+### Grouping for Synchronized Movement
+
+- **Group Related Parts**: When multiple meshes need to move together (e.g., tail + tail tip), wrap them in a `Group` and animate the group, not individual meshes
+  ```typescript
+  const tailGroup = new Group();
+  tailGroup.add(tailMesh);
+  tailGroup.add(tailTipMesh);
+  // Animate tailGroup.rotation, not individual meshes
+  ```
+- **Parent-Child Relationships**: Use Groups to establish parent-child relationships so child transforms are relative to parent
+
+### Base Transform Snapshots
+
+- **Capture Base State**: Before applying animations, capture the base transform (position, rotation, scale) of each animatable part
+  ```typescript
+  type TransformSnapshot = {
+    pos: Vector3;
+    rot: Euler;
+    scale: Vector3;
+  };
+  
+  function snapTransform(obj: Mesh | Group): TransformSnapshot {
+    return {
+      pos: obj.position.clone(),
+      rot: obj.rotation.clone(),
+      scale: obj.scale.clone(),
+    };
+  }
+  ```
+- **Reset Before Animating**: Always reset to base transform before applying relative animations to prevent accumulation
+  ```typescript
+  // In useFrame or animation loop:
+  tailMesh.position.copy(baseTransform.pos);
+  tailMesh.rotation.copy(baseTransform.rot);
+  // Then apply relative changes:
+  tailMesh.rotation.y += Math.sin(time) * amplitude;
+  ```
+
+### Refs vs Direct References
+
+- **Avoid Refs in useMemo**: Don't set refs inside `useMemo` - refs should be set after render, not during memoization
+- **Return Objects Directly**: Return animatable objects directly from `useMemo` and use them as regular variables
+  ```typescript
+  // ❌ Bad: Setting refs in useMemo
+  const catModel = useMemo(() => {
+    const tail = createTail();
+    tailRef.current = tail; // Unreliable!
+    return group;
+  }, []);
+  
+  // ✅ Good: Return objects directly
+  const catModelData = useMemo(() => {
+    const tail = createTail();
+    const tailBase = snapTransform(tail);
+    return { group, tail, tailBase };
+  }, []);
+  const { tail, tailBase } = catModelData; // Use directly
+  ```
+
+### Animation Blending Pattern
+
+- **Pattern**: Reset → Apply → Restore
+  1. Reset to base transform
+  2. Apply relative animation changes
+  3. Restore to base when animation completes
+- **Relative Changes**: Always apply animations as relative changes from base, not absolute values
+- **Cleanup**: When animations end, explicitly restore base transforms to prevent drift
+
 ## Debugging Tips
 
 - **Visualize Z-Positions**: Add temporary colored planes at different z-levels to debug positioning
