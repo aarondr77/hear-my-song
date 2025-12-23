@@ -470,8 +470,11 @@ export function PlaceholderCat({ catState, carryingToy = false, isPlaying = fals
       const initialPos = new Vector3(catPosition.x, catPosition.y, catPosition.z);
       catRef.current.position.copy(initialPos);
       // Set initial rotation based on facing direction
-      const baseYaw = 0; // cat model faces +Z by default
-      catRef.current.rotation.y = facing === 'left' ? baseYaw + Math.PI / 2 : baseYaw - Math.PI / 2;
+      // Cat model faces +Z by default. In Three.js right-handed coordinates:
+      // - Negative Y rotation turns to face -X (left)
+      // - Positive Y rotation turns to face +X (right)
+      const baseYaw = 0;
+      catRef.current.rotation.y = facing === 'left' ? baseYaw - Math.PI / 2 : baseYaw + Math.PI / 2;
       jumpRef.current.lastTarget = initialPos.clone();
       jumpRef.current.startRotationY = catRef.current.rotation.y;
       jumpRef.current.targetRotationY = catRef.current.rotation.y;
@@ -584,9 +587,12 @@ export function PlaceholderCat({ catState, carryingToy = false, isPlaying = fals
         }
         
         // Face the correct direction when not jumping
-        const baseYaw = 0; // cat model faces +Z by default
+        // Cat model faces +Z by default. In Three.js right-handed coordinates:
+        // - Negative Y rotation turns to face -X (left)
+        // - Positive Y rotation turns to face +X (right)
+        const baseYaw = 0;
         if (!jump.active) {
-          catRef.current.rotation.y = facing === 'left' ? baseYaw + Math.PI / 2 : baseYaw - Math.PI / 2;
+          catRef.current.rotation.y = facing === 'left' ? baseYaw - Math.PI / 2 : baseYaw + Math.PI / 2;
         }
 
         // World-space arc path (only during leap phase)
@@ -877,8 +883,11 @@ export function PlaceholderCat({ catState, carryingToy = false, isPlaying = fals
           }
           
           // Update rotation based on facing direction (for floor movement)
+          // Cat model faces +Z by default. In Three.js right-handed coordinates:
+          // - Negative Y rotation turns to face -X (left)
+          // - Positive Y rotation turns to face +X (right)
           const baseYaw = 0;
-          const targetRotation = facing === 'left' ? baseYaw + Math.PI / 2 : baseYaw - Math.PI / 2;
+          const targetRotation = facing === 'left' ? baseYaw - Math.PI / 2 : baseYaw + Math.PI / 2;
           // Smoothly interpolate rotation
           catRef.current.rotation.y += (targetRotation - catRef.current.rotation.y) * 0.15;
           
