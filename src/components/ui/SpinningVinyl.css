@@ -9,11 +9,13 @@
   width: 200px;
   height: 200px;
   border-radius: 50%;
-  background: #1a1a1a;
   position: relative;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
   animation: spin 3s linear infinite;
   animation-play-state: paused;
+  overflow: hidden;
+  /* No extra clipping - border-radius handles the circular shape */
+  background: transparent;
 }
 
 .spinning-vinyl.playing {
@@ -34,21 +36,52 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 40px;
-  height: 40px;
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
-  background: #000;
-  z-index: 2;
-  box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.1);
+  background: #1a1a1a;
+  z-index: 3;
+  box-shadow: 
+    inset 0 2px 4px rgba(255, 255, 255, 0.1),
+    0 0 0 2px rgba(0, 0, 0, 0.3);
+  /* Create the center hole effect */
+  border: 2px solid rgba(0, 0, 0, 0.5);
 }
 
-.album-art {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  object-fit: cover;
+/* Optional subtle vinyl grooves texture overlay - disabled to keep artwork clear */
+/*
+.spinning-vinyl::before {
+  content: '';
   position: absolute;
   top: 0;
   left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 50%;
+  background: 
+    repeating-conic-gradient(
+      from 0deg,
+      transparent 0deg,
+      transparent 2deg,
+      rgba(0, 0, 0, 0.01) 2deg,
+      rgba(0, 0, 0, 0.01) 3deg
+    );
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.5;
+}
+*/
+
+.spinning-vinyl-album-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+  display: block;
+  /* Defensively override any global img styles */
+  max-width: none;
+  max-height: none;
 }
 

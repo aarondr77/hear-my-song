@@ -23,12 +23,19 @@ export function RoomPage({ tracks, currentUser, accessToken }: RoomPageProps) {
   const selectedTrack = selectedTrackIndex !== null ? tracks[selectedTrackIndex] : null;
   const trackId = selectedTrack?.id || null;
   
-  const { notes, isLoading: isLoadingNotes, createNote, deleteNote } = useNotes(trackId);
+  // Only fetch notes when modal is open
+  const { notes, isLoading: isLoadingNotes, createNote, deleteNote } = useNotes(trackId, isModalOpen);
   const { isPlaying, currentTrack, playTrack, togglePlay, position, duration } = useSpotifyPlayer(accessToken);
 
   // Handle Space key to open modal
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't prevent default if user is typing in an input field
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+        return;
+      }
+      
       if (e.key === ' ' && catState.currentTrackIndex !== null) {
         e.preventDefault();
         setSelectedTrackIndex(catState.currentTrackIndex);
