@@ -1,0 +1,50 @@
+.note-card {
+  background: var(--color-bg-modal);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+  border-left: 3px solid var(--color-spotify-green);
+  box-shadow: var(--shadow-subtle);
+}
+
+.note-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-sm);
+  font-size: 0.9em;
+}
+
+.note-author {
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.note-time {
+  color: var(--color-text-secondary);
+  font-size: 0.85em;
+}
+
+.delete-note {
+  background: transparent;
+  border: none;
+  color: #999;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0 8px;
+  line-height: 1;
+  transition: color 0.2s;
+}
+
+.delete-note:hover {
+  color: #e74c3c;
+}
+
+.note-content {
+  margin: 0;
+  color: var(--color-text-primary);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+

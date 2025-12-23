@@ -1,0 +1,117 @@
+# 3D Scene Composition Rules for React Three Fiber / Three.js
+
+## Coordinate System & Z-Positioning
+
+- **Reference Plane**: Establish a clear reference plane (e.g., wall at z=0)
+- **Absolute vs Relative Positions**: When positioning elements relative to other objects:
+  - Calculate: `relativeZ = targetAbsoluteZ - parentAbsoluteZ`
+  - Document the coordinate system clearly in comments
+- **Visibility Check**: Elements must have `absoluteZ > referencePlaneZ` to be visible (unless intentionally behind)
+- **Depth Separation**: Maintain sufficient z-distance between layers (minimum 0.01-0.02 units) to avoid z-fighting
+
+### Anchoring surfaces (prevents “floor covers wall” bugs)
+
+- **Define your wall plane once**: e.g. `WALL_Z = 0` (world-space).
+- **Always anchor by edges, not centers**: when you want a surface to start *at* the wall (but not overlap it), anchor its **back edge** to `WALL_Z + EPS`.
+- **Preferred pattern** (world-space anchoring):
+  - Pick an epsilon: `EPS_Z = 0.01..0.02`
+  - If your floor group is at `position = [x, y, zGroup]` and your floor geometry's local back edge is at `localBackEdgeZ`:
+    - `worldBackEdgeZ = zGroup + localBackEdgeZ`
+    - To anchor: `localBackEdgeZ = (WALL_Z + EPS_Z) - zGroup`
+  - This guarantees `worldBackEdgeZ > WALL_Z` and avoids z-fighting/intersection at the seam.
+
+## 3D Geometry Depth Considerations
+
+- **3D Objects Extend in All Directions**: Spheres, boxes, etc. extend from their center position
+  - A sphere at `z=0` with radius `0.15` extends from `z=-0.15` to `z=0.15`
+  - Always account for geometry depth when calculating occlusion
+- **Flattening 3D Objects**: Use non-uniform scale `[x, y, z*0.1]` to flatten objects that shouldn't extend forward
+- **Bounding Box Awareness**: Consider the full extent of geometry, not just center position
+
+## Rotation & Positioning
+
+- **Rotation Order Matters**: Rotations are applied in order (X, Y, Z)
+- **After Rotation, Axes Change**: A -90° X rotation makes original Y-axis become new Z-axis
+- **Position After Rotation**: Position values apply after rotation is complete
+- **Document Transform Order**: Always document: rotation → position → scale (or actual order used)
+
+### Common pitfall: rotating floors into “walls”
+
+- **Avoid unnecessary group rotations for floors**:
+  - If a thing is conceptually a floor, prefer a **world-horizontal** surface (no parent rotation) and place it with `y` (height) and `z` (distance from wall).
+- **If you do rotate, explicitly map axes in a comment**:
+  - Example: with `rotationX = -90°`, local axes remap roughly as:
+    - local Y → world Z (forward/back)
+    - local Z → world -Y (down/up)
+  - Meaning: your “floor depth” can accidentally become **vertical height** if you keep using the old mental model.
+- **Rule of thumb**: after rotations, re-check what geometry dimension is extending toward the wall plane (`z=0`).
+
+## Shadow System
+
+- **Shadow Receivers**: Use `receiveShadow={true}` on surfaces that should show shadows
+- **Shadow Casters**: Use `castShadow={true}` on objects that should cast shadows
+- **Light Configuration**: Ensure shadow-casting lights have proper:
+  - `shadow-mapSize` (2048+ for quality)
+  - `shadow-camera` bounds that include all relevant geometry
+  - `shadow-bias` to prevent shadow acne
+- **Z-Position Affects Shadows**: Objects too close in z-space may have incorrect shadows
+
+## Depth Buffer & Rendering Order
+
+- **Primary Solution**: Correct z-positioning is the primary fix for depth issues
+- **Render Order**: Use `renderOrder` prop as secondary solution:
+  - Lower numbers render first (behind)
+  - Higher numbers render later (in front)
+- **Depth Write**: Use `depthWrite={true}` on materials that should write to depth buffer
+- **Transparency**: Transparent materials may need `depthWrite={false}` and proper `renderOrder`
+
+## Texture & Material Best Practices
+
+- **Texture Wrapping**: Use `RepeatWrapping` for tiling textures, `ClampToEdgeWrapping` for non-tiling
+- **Texture Resolution**: Use appropriate resolution (256, 512, 1024) based on viewing distance
+- **Material Properties**: 
+  - Wood: `roughness={0.75-0.9}`, `metalness={0.0-0.1}`
+  - Glass: `roughness={0.05-0.1}`, `metalness={0.1-0.3}`, `transparent={true}`
+  - Painted surfaces: `roughness={0.8-0.9}`, `metalness={0.0}`
+- **Color Space**: Use `meshBasicMaterial` for elements that shouldn't be affected by lighting (sky, UI elements)
+
+## Intersection & Occlusion
+
+- **Z-Fighting Prevention**: Maintain minimum 0.01-0.02 unit separation between coplanar surfaces
+- **Wall Intersections**: Ensure floor/objects don't extend into wall plane (z=0)
+- **Occlusion Testing**: Test that objects behind dividers/frames are properly occluded
+- **Geometry Thickness**: Account for thickness when calculating if objects will intersect
+
+## Component Structure
+
+- **Memoization**: Use `useMemo` for expensive texture/geometry generation
+- **Refs for Animation**: Use `useRef` for objects that need animation updates
+- **Group Organization**: Use `<group>` to organize related elements with shared transforms
+- **Position Props**: Accept position as prop with sensible defaults: `position = [0, 0, 0]`
+
+## Debugging Tips
+
+- **Visualize Z-Positions**: Add temporary colored planes at different z-levels to debug positioning
+- **Check Absolute Positions**: Calculate absolute z = parentZ + relativeZ
+- **Test Edge Cases**: Test objects at boundaries (corners, edges) where occlusion is most visible
+- **Incremental Changes**: Make small z-adjustments (0.01-0.02) rather than large jumps
+- **Axis sanity check**: Temporarily add an `axesHelper` or a small labeled cube to confirm which way +Z points *after* your parent rotations.
+
+## Code Comments
+
+- **Document Z-Layers**: Always comment z-position constants with their purpose:
+  ```typescript
+  const Z_SKY = -0.08;      // Sky furthest back
+  const Z_CLOUDS = -0.06;   // Clouds behind mullions
+  const Z_MULLIONS = 0.01;  // Pane dividers in front
+  ```
+- **Explain Calculations**: Comment complex position calculations
+- **Reference Plane**: Document what z=0 represents in each component
+
+## Performance Considerations
+
+- **Texture Reuse**: Reuse textures across similar objects when possible
+- **Geometry Reuse**: Use instancing for repeated geometry (planks, etc.)
+- **LOD**: Consider level-of-detail for distant objects
+- **Shadow Quality**: Balance shadow-mapSize with performance needs
+
