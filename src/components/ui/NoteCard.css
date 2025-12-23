@@ -1,10 +1,68 @@
 .note-card {
-  background: var(--color-bg-modal);
-  border-radius: var(--radius-md);
+  /* Handwritten paper taped to sleeve */
+  background: 
+    repeating-linear-gradient(
+      0deg,
+      #fef9e7 0px,
+      #fef9e7 1px,
+      #fef8e3 1px,
+      #fef8e3 2px
+    ),
+    linear-gradient(135deg, #fff8dc 0%, #fef9e7 100%);
+  background-size: 100% 2px, 100% 100%;
+  border-radius: 4px;
   padding: var(--spacing-md);
   margin-bottom: var(--spacing-md);
-  border-left: 3px solid var(--color-spotify-green);
-  box-shadow: var(--shadow-subtle);
+  box-shadow: 
+    2px 2px 8px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  position: relative;
+  border: 1px solid rgba(139, 111, 71, 0.2);
+  /* Slight irregular edges */
+  clip-path: polygon(
+    0% 2px,
+    2px 0%,
+    calc(100% - 2px) 0%,
+    100% 2px,
+    100% calc(100% - 2px),
+    calc(100% - 2px) 100%,
+    2px 100%,
+    0% calc(100% - 2px)
+  );
+  transition: transform 0.2s ease;
+}
+
+.note-card:hover {
+  transform: rotate(0deg) scale(1.02);
+  z-index: 10;
+}
+
+/* Tape strips at corners */
+.note-card::before,
+.note-card::after {
+  content: '';
+  position: absolute;
+  width: 30px;
+  height: 15px;
+  background: rgba(255, 255, 255, 0.7);
+  opacity: 0.8;
+  border: 1px solid rgba(200, 200, 200, 0.5);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  z-index: 1;
+}
+
+/* Top-left tape */
+.note-card::before {
+  top: -5px;
+  left: 10px;
+  transform: rotate(-15deg);
+}
+
+/* Bottom-right tape */
+.note-card::after {
+  bottom: -5px;
+  right: 10px;
+  transform: rotate(15deg);
 }
 
 .note-header {
@@ -17,12 +75,19 @@
 
 .note-author {
   font-weight: 600;
-  color: var(--color-text-primary);
+  color: #2c2c2c;
+  font-family: 'Kalam', 'Caveat', 'Indie Flower', 'Comic Sans MS', cursive;
+  font-size: 0.9rem;
+  position: relative;
+  z-index: 2;
 }
 
 .note-time {
-  color: var(--color-text-secondary);
-  font-size: 0.85em;
+  color: #8b6f47;
+  font-size: 0.8em;
+  font-family: 'Kalam', 'Caveat', 'Indie Flower', 'Comic Sans MS', cursive;
+  position: relative;
+  z-index: 2;
 }
 
 .delete-note {
@@ -34,6 +99,9 @@
   padding: 0 8px;
   line-height: 1;
   transition: color 0.2s;
+  position: relative;
+  z-index: 3;
+  font-family: Arial, sans-serif;
 }
 
 .delete-note:hover {
@@ -42,9 +110,13 @@
 
 .note-content {
   margin: 0;
-  color: var(--color-text-primary);
-  line-height: 1.6;
+  color: #2c2c2c;
+  line-height: 1.8;
   white-space: pre-wrap;
   word-wrap: break-word;
+  font-family: 'Kalam', 'Caveat', 'Indie Flower', 'Comic Sans MS', cursive;
+  font-size: 0.95rem;
+  position: relative;
+  z-index: 2;
 }
 

@@ -22,8 +22,11 @@ export function NoteCard({ note, isOwnNote, onDelete }: NoteCardProps) {
     });
   };
 
+  // Generate a consistent rotation based on note ID for visual variety
+  const rotation = (note.id.charCodeAt(0) + note.id.charCodeAt(note.id.length - 1)) % 7 - 3; // -3 to +3 degrees
+
   return (
-    <div className="note-card">
+    <div className="note-card" style={{ transform: `rotate(${rotation}deg)` }}>
       <div className="note-header">
         <span className="note-author">{note.author}</span>
         <span className="note-time">{formatDate(note.created_at)}</span>

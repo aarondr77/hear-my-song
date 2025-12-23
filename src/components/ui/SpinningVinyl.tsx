@@ -23,7 +23,8 @@ export function SpinningVinyl({ albumArtUrl, isPlaying }: SpinningVinylProps) {
     <div className="spinning-vinyl-container">
       <div ref={vinylRef} className={`spinning-vinyl ${isPlaying ? 'playing' : ''}`}>
         <div className="vinyl-center" />
-        <img src={albumArtUrl} alt="Album" className="album-art" />
+        {/* Use a unique class name to avoid collisions with global `.album-art` thumbnail styles in App.css */}
+        <img src={albumArtUrl} alt="Album" className="spinning-vinyl-album-art" />
       </div>
     </div>
   );

@@ -101,10 +101,11 @@ export function useSpotifyPlayer(accessToken: string | null) {
   // Separate effect for position polling
   useEffect(() => {
     const updatePosition = async () => {
-      if (playerRef.current && state.isPlaying) {
+      if (playerRef.current && state.isPlaying && state.deviceId) {
         try {
+          // Check if player is ready before calling getCurrentState
           const currentState = await playerRef.current.getCurrentState();
-          if (currentState) {
+          if (currentState && !currentState.paused) {
             setState((prev) => ({
               ...prev,
               position: currentState.position,
@@ -112,12 +113,16 @@ export function useSpotifyPlayer(accessToken: string | null) {
             }));
           }
         } catch (err) {
-          console.error('Error getting player state:', err);
+          // Silently handle errors - player might not be ready yet
+          // Don't spam console with errors
+          if (err instanceof Error && !err.message.includes('streamer')) {
+            console.error('Error getting player state:', err);
+          }
         }
       }
     };
 
-    if (state.isPlaying && state.player) {
+    if (state.isPlaying && state.player && state.deviceId) {
       positionIntervalRef.current = window.setInterval(updatePosition, 1000);
     } else {
       if (positionIntervalRef.current) {
@@ -131,14 +136,18 @@ export function useSpotifyPlayer(accessToken: string | null) {
         clearInterval(positionIntervalRef.current);
       }
     };
-  }, [state.isPlaying, state.player]);
+  }, [state.isPlaying, state.player, state.deviceId]);
 
   const playTrack = async (trackUri: string) => {
-    if (!state.deviceId || !state.player || !accessToken) return;
+    if (!state.deviceId || !state.player || !accessToken) {
+      throw new Error('Player not ready');
+    }
 
     try {
+      // Activate the player element first
       await state.player.activateElement();
       
+      // Set the device as active
       await fetch('https://api.spotify.com/v1/me/player', {
         method: 'PUT',
         headers: {
@@ -148,6 +157,7 @@ export function useSpotifyPlayer(accessToken: string | null) {
         body: JSON.stringify({ device_ids: [state.deviceId], play: true }),
       });
 
+      // Play the track
       const response = await fetch(
         `https://api.spotify.com/v1/me/player/play?device_id=${state.deviceId}`,
         {
@@ -161,15 +171,21 @@ export function useSpotifyPlayer(accessToken: string | null) {
       );
 
       if (!response.ok && response.status !== 204) {
-        throw new Error('Failed to play track');
+        const errorText = await response.text();
+        throw new Error(`Failed to play track: ${errorText}`);
       }
 
+      // Wait a bit longer for the player to initialize, then check state
       setTimeout(async () => {
-        const currentState = await state.player?.getCurrentState();
-        if (currentState?.paused) {
-          await state.player?.resume();
+        try {
+          const currentState = await state.player?.getCurrentState();
+          if (currentState?.paused) {
+            await state.player?.resume();
+          }
+        } catch (err) {
+          // Ignore errors here - player state will update via listener
         }
-      }, 500);
+      }, 1000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Playback error');
       throw err;
@@ -177,8 +193,17 @@ export function useSpotifyPlayer(accessToken: string | null) {
   };
 
   const togglePlay = async () => {
-    if (!state.player) return;
-    await state.player.togglePlay();
+    if (!state.player || !state.deviceId) {
+      console.warn('Player not ready for toggle');
+      return;
+    }
+    try {
+      await state.player.activateElement();
+      await state.player.togglePlay();
+    } catch (err) {
+      console.error('Error toggling play:', err);
+      setError(err instanceof Error ? err.message : 'Toggle play error');
+    }
   };
 
   return {
