@@ -143,7 +143,7 @@ export function RoomPage({ tracks, currentUser, accessToken }: RoomPageProps) {
   const currentPlayingIndexRef = useRef<number | null>(null);
   
   // Callback when a track ends - play the next one
-  const handleTrackEnd = useCallback(() => {
+  const handleTrackEnd = useCallback(async () => {
     const currentIndex = currentPlayingIndexRef.current;
     if (currentIndex !== null && currentIndex < tracks.length - 1) {
       const nextIndex = currentIndex + 1;
@@ -151,7 +151,13 @@ export function RoomPage({ tracks, currentUser, accessToken }: RoomPageProps) {
       currentPlayingIndexRef.current = nextIndex;
       // playTrack will be available from the hook
       // We need to call it via a ref since the hook isn't initialized yet
-      playTrackRef.current?.(nextTrack.uri);
+      try {
+        await playTrackRef.current?.(nextTrack.uri);
+      } catch (err) {
+        // If playback fails (e.g., rate limit), stop auto-playing
+        console.error('Failed to auto-play next track:', err);
+        // Don't throw - just stop the auto-play chain
+      }
     }
   }, [tracks]);
   
@@ -221,14 +227,19 @@ export function RoomPage({ tracks, currentUser, accessToken }: RoomPageProps) {
   }, []);
 
   const handlePlayPause = useCallback(async () => {
-    if (selectedTrack) {
-      if (currentTrack?.uri === selectedTrack.uri && isPlaying) {
-        await togglePlay();
+    try {
+      if (selectedTrack) {
+        if (currentTrack?.uri === selectedTrack.uri && isPlaying) {
+          await togglePlay();
+        } else {
+          await playTrack(selectedTrack.uri);
+        }
       } else {
-        await playTrack(selectedTrack.uri);
+        await togglePlay();
       }
-    } else {
-      await togglePlay();
+    } catch (err) {
+      console.error('Failed to play/pause:', err);
+      // Error is already set in the hook, user will see it
     }
   }, [selectedTrack, currentTrack, isPlaying, playTrack, togglePlay]);
 

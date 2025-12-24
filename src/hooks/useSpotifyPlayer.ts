@@ -32,6 +32,13 @@ export function useSpotifyPlayer(accessToken: string | null, options?: UseSpotif
     isPlaying: false,
   });
   const onTrackEndRef = useRef(options?.onTrackEnd);
+  // Guard to prevent multiple rapid onTrackEnd calls
+  const lastTrackEndCallRef = useRef<number>(0);
+  const trackEndDebounceMs = 2000; // Don't call onTrackEnd more than once per 2 seconds
+  // Track if the last play attempt failed to prevent cascading failures
+  const lastPlayFailedRef = useRef<boolean>(false);
+  // Track if the player's internal streamer is ready (player_state_changed has fired)
+  const streamerReadyRef = useRef<boolean>(false);
 
   // Keep the callback ref up to date
   useEffect(() => {
@@ -62,10 +69,14 @@ export function useSpotifyPlayer(accessToken: string | null, options?: UseSpotif
       player.addListener('not_ready', () => {
         console.log('Spotify player not ready');
         deviceIdRef.current = null;
+        streamerReadyRef.current = false;
         setState((prev) => ({ ...prev, deviceId: null }));
       });
 
       player.addListener('player_state_changed', (playerState) => {
+        // Mark streamer as ready once we receive the first state change
+        streamerReadyRef.current = true;
+        
         if (!playerState) {
           setState((prev) => ({ ...prev, isPlaying: false, position: 0, duration: 0 }));
           if (positionIntervalRef.current) {
@@ -79,6 +90,12 @@ export function useSpotifyPlayer(accessToken: string | null, options?: UseSpotif
         const wasPlaying = prevStateRef.current.isPlaying;
         const prevTrackUri = prevStateRef.current.trackUri;
         const isNowPaused = playerState.paused;
+        const isNowPlaying = !playerState.paused;
+
+        // If we're successfully playing a track, reset the failure flag
+        if (isNowPlaying && currentTrackUri) {
+          lastPlayFailedRef.current = false;
+        }
 
         // Detect when a track naturally ends:
         // - Was playing, now paused
@@ -87,11 +104,21 @@ export function useSpotifyPlayer(accessToken: string | null, options?: UseSpotif
         const trackChanged = prevTrackUri !== null && currentTrackUri !== prevTrackUri;
         const trackEndedNaturally = wasPlaying && isNowPaused && playerState.position === 0 && !trackChanged;
         
-        if (trackEndedNaturally && onTrackEndRef.current) {
-          // Small delay to ensure state is updated before playing next track
-          setTimeout(() => {
-            onTrackEndRef.current?.();
-          }, 100);
+        // Only trigger onTrackEnd if:
+        // 1. Track ended naturally
+        // 2. Last play didn't fail (to prevent cascading failures)
+        // 3. Enough time has passed since last call (debounce)
+        if (trackEndedNaturally && onTrackEndRef.current && !lastPlayFailedRef.current) {
+          const now = Date.now();
+          const timeSinceLastCall = now - lastTrackEndCallRef.current;
+          
+          if (timeSinceLastCall >= trackEndDebounceMs) {
+            lastTrackEndCallRef.current = now;
+            // Small delay to ensure state is updated before playing next track
+            setTimeout(() => {
+              onTrackEndRef.current?.();
+            }, 100);
+          }
         }
 
         // Update previous state
@@ -139,13 +166,16 @@ export function useSpotifyPlayer(accessToken: string | null, options?: UseSpotif
       if (positionIntervalRef.current) {
         clearInterval(positionIntervalRef.current);
       }
+      // Reset streamer ready flag on cleanup
+      streamerReadyRef.current = false;
     };
   }, [accessToken]);
 
   // Separate effect for position polling
   useEffect(() => {
     const updatePosition = async () => {
-      if (playerRef.current && state.isPlaying && state.deviceId) {
+      // Only poll if player, streamer, and device are all ready
+      if (playerRef.current && state.isPlaying && state.deviceId && streamerReadyRef.current) {
         try {
           // Check if player is ready before calling getCurrentState
           const currentState = await playerRef.current.getCurrentState();
@@ -158,15 +188,21 @@ export function useSpotifyPlayer(accessToken: string | null, options?: UseSpotif
           }
         } catch (err) {
           // Silently handle errors - player might not be ready yet
-          // Don't spam console with errors
-          if (err instanceof Error && !err.message.includes('streamer')) {
-            console.error('Error getting player state:', err);
+          // The streamer error specifically happens when _streamer is undefined
+          // This is expected during initialization, so we ignore it
+          if (err instanceof Error) {
+            const errorMsg = err.message || String(err);
+            // Ignore streamer-related errors (they're expected during initialization)
+            if (!errorMsg.includes('streamer') && !errorMsg.includes('_streamer')) {
+              console.error('Error getting player state:', err);
+            }
           }
         }
       }
     };
 
-    if (state.isPlaying && state.player && state.deviceId) {
+    // Only start polling if player is ready AND streamer is initialized
+    if (state.isPlaying && state.player && state.deviceId && streamerReadyRef.current) {
       positionIntervalRef.current = window.setInterval(updatePosition, 1000);
     } else {
       if (positionIntervalRef.current) {
@@ -187,12 +223,15 @@ export function useSpotifyPlayer(accessToken: string | null, options?: UseSpotif
       throw new Error('Player not ready');
     }
 
+    // Reset the failure flag when attempting a new play
+    lastPlayFailedRef.current = false;
+
     try {
       // Activate the player element first
       await state.player.activateElement();
       
       // Set the device as active
-      await fetch('https://api.spotify.com/v1/me/player', {
+      const deviceResponse = await fetch('https://api.spotify.com/v1/me/player', {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -200,6 +239,13 @@ export function useSpotifyPlayer(accessToken: string | null, options?: UseSpotif
         },
         body: JSON.stringify({ device_ids: [state.deviceId], play: true }),
       });
+
+      // Check for rate limiting on device activation
+      if (deviceResponse.status === 429) {
+        lastPlayFailedRef.current = true;
+        const errorText = await deviceResponse.text();
+        throw new Error(`Failed to play track: ${errorText}`);
+      }
 
       // Play the track
       const response = await fetch(
@@ -215,12 +261,21 @@ export function useSpotifyPlayer(accessToken: string | null, options?: UseSpotif
       );
 
       if (!response.ok && response.status !== 204) {
+        // Mark as failed if we get a 429 or other error
+        if (response.status === 429) {
+          lastPlayFailedRef.current = true;
+        }
         const errorText = await response.text();
         throw new Error(`Failed to play track: ${errorText}`);
       }
 
       // Wait a bit longer for the player to initialize, then check state
+      // Only try to get state if streamer is ready
       setTimeout(async () => {
+        if (!streamerReadyRef.current) {
+          // Streamer not ready yet, skip this check
+          return;
+        }
         try {
           const currentState = await state.player?.getCurrentState();
           if (currentState?.paused) {
@@ -228,9 +283,12 @@ export function useSpotifyPlayer(accessToken: string | null, options?: UseSpotif
           }
         } catch (err) {
           // Ignore errors here - player state will update via listener
+          // Streamer errors are expected if not fully initialized
         }
       }, 1000);
     } catch (err) {
+      // Mark as failed for any error
+      lastPlayFailedRef.current = true;
       setError(err instanceof Error ? err.message : 'Playback error');
       throw err;
     }
