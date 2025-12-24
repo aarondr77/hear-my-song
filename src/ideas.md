@@ -11,8 +11,11 @@
 
 
 # Trinkets to add
-3. Cat laying on person's leg
-4. Eating salt 
+1. Cat laying on person's leg
+2. Eating salt 
+3. Can put a lamp on your head
+4. Dwight Shrute poster
+
 
 
 
