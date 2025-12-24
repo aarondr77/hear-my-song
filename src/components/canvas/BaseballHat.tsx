@@ -118,7 +118,7 @@ export function BaseballHat({ position, isWorn = false }: BaseballHatProps) {
     <group 
       ref={groupRef} 
       position={[position[0], position[1] + floorOffset, position[2]]}
-      rotation={[Math.PI / 2, 0, 0]} // Same orientation as when worn, but laid flat: X=90° (lay down flat on floor)
+      rotation={[0, Math.PI / 2, 0]} // No rotation - hat is already built backwards
     >
       <primitive object={hatModel} castShadow receiveShadow />
     </group>
