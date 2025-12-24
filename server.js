@@ -46,6 +46,12 @@ const upload = multer({
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
+// Request logging middleware for debugging
+app.use((req, res, next) => {
+  console.log(`[Request] ${req.method} ${req.path}`);
+  next();
+});
+
 // Spotify token exchange endpoint
 app.post('/api/token', async (req, res) => {
   const { code, redirect_uri, code_verifier } = req.body;
@@ -268,26 +274,55 @@ app.delete('/api/notes/:noteId', async (req, res) => {
 if (process.env.NODE_ENV === 'production') {
   const distPath = path.join(__dirname, 'dist');
   
-  // Serve static assets (JS, CSS, images, etc.) but NOT index.html
-  // Setting index: false prevents express.static from automatically serving index.html
+  // Explicitly handle /callback route to ensure it works
+  app.get('/callback', (req, res) => {
+    console.log(`[Callback] Explicit /callback route hit with query:`, req.query);
+    const indexPath = path.join(distPath, 'index.html');
+    res.sendFile(indexPath, (err) => {
+      if (err) {
+        console.error('Error serving index.html for /callback:', err);
+        if (!res.headersSent) {
+          res.status(500).send('Error loading application');
+        }
+      } else {
+        console.log(`[Callback] Successfully served index.html`);
+      }
+    });
+  });
+  
+  // Step 1: Serve static assets (JS, CSS, images, etc.) but NOT index.html
+  // Static middleware will try to serve files, and if not found, calls next()
   app.use(express.static(distPath, {
-    index: false  // Don't auto-serve index.html - we'll handle it explicitly below
+    index: false  // Don't auto-serve index.html
   }));
   
-  // Catch-all handler: serve index.html for all non-API routes
-  // This ensures React Router can handle client-side routes like /callback
+  // Step 2: Catch-all handler for all non-API routes that don't match static files
+  // This ensures React Router can handle client-side routes
   app.get('*', (req, res, next) => {
     // Skip API routes - they should return 404 if not found
     if (req.path.startsWith('/api')) {
       return res.status(404).json({ error: 'Not found' });
     }
     
-    // For all other routes (including /callback), serve index.html
+    // Skip /callback since we handle it explicitly above
+    if (req.path === '/callback') {
+      return next(); // Shouldn't reach here, but just in case
+    }
+    
+    // Log the request for debugging
+    console.log(`[Route] Serving index.html for: ${req.path} (method: ${req.method})`);
+    
+    // For all other routes, serve index.html
     // This allows React to load and handle the routing client-side
-    res.sendFile(path.join(distPath, 'index.html'), (err) => {
+    const indexPath = path.join(distPath, 'index.html');
+    res.sendFile(indexPath, (err) => {
       if (err) {
         console.error('Error serving index.html:', err);
-        res.status(500).send('Error loading application');
+        if (!res.headersSent) {
+          res.status(500).send('Error loading application');
+        }
+      } else {
+        console.log(`[Route] Successfully served index.html for: ${req.path}`);
       }
     });
   });
