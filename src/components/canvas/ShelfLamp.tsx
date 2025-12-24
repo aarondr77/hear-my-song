@@ -189,7 +189,7 @@ export function ShelfLamp({
         />
       </mesh>
       
-      {/* Point light */}
+      {/* Point light - always on when lamp is placed */}
       <pointLight
         position={[0, bulbY, 0]}
         color={lightColor}

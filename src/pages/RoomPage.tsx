@@ -79,7 +79,11 @@ export function RoomPage({ tracks, currentUser, accessToken }: RoomPageProps) {
   
   const handleDropLamp = useCallback((x: number, z: number) => {
     const currentPlatform = getPlatform(platformRef.current);
-    const dropY = currentPlatform?.type === 'shelf' ? currentPlatform.position.y - 1 : FLOOR_Y;
+    // Shelf surface is at platform.position.y - 1.1, lamp base should sit on it
+    // Lamp base height is 0.05, so position lamp at shelf surface + baseHeight/2
+    const dropY = currentPlatform?.type === 'shelf' 
+      ? currentPlatform.position.y - 1.1 + 0.025  // Shelf surface + half base height
+      : FLOOR_Y;
     setLampState({
       position: { x, y: dropY, z },
       isWorn: false,
