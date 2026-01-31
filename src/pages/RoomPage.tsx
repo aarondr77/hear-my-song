@@ -108,6 +108,7 @@ export function RoomPage({ tracks, currentUser, accessToken }: RoomPageProps) {
     platformRef.current = catState.platform;
   }, [catState.platform]);
   
+  const [activeWall, setActiveWall] = useState<'main' | 'back'>('main');
   const [selectedTrackIndex, setSelectedTrackIndex] = useState<number | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
@@ -301,6 +302,7 @@ export function RoomPage({ tracks, currentUser, accessToken }: RoomPageProps) {
       
       <div className="room-scene-container">
         <Room
+          activeWall={activeWall}
           tracks={tracks}
           catState={catState}
           toyState={toyState}
@@ -383,17 +385,26 @@ export function RoomPage({ tracks, currentUser, accessToken }: RoomPageProps) {
         onClose={() => setIsHelpModalOpen(false)}
       />
 
-      <NowPlayingBar
-        track={currentTrack ? tracks.find((t) => t.uri === currentTrack.uri) || null : null}
-        isPlaying={isPlaying}
-        onPlayPause={async () => {
-          try {
-            await togglePlay();
-          } catch (err) {
-            console.error('Failed to toggle play:', err);
-          }
-        }}
-      />
+      <div className="room-page-bottom-bar">
+        <button
+          type="button"
+          className="turn-around-btn"
+          onClick={() => setActiveWall((w) => (w === 'main' ? 'back' : 'main'))}
+        >
+          Turn Around
+        </button>
+        <NowPlayingBar
+          track={currentTrack ? tracks.find((t) => t.uri === currentTrack.uri) || null : null}
+          isPlaying={isPlaying}
+          onPlayPause={async () => {
+            try {
+              await togglePlay();
+            } catch (err) {
+              console.error('Failed to toggle play:', err);
+            }
+          }}
+        />
+      </div>
     </div>
   );
 }
