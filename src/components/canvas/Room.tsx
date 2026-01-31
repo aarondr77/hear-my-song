@@ -21,8 +21,8 @@ import type { SpotifyTrack, ToyState, HatState, LampState } from '../../types';
 import type { CatState } from '../../types';
 import { FLOOR_Y, FLOOR_Z } from '../../types';
 
-/** Default wall size for the back (blank) scene; same coordinate system, no platforms. */
-const BACK_WALL_SIZE: [number, number] = [16, 30];
+/** Default wall size for the back (blank) scene; large enough so corners stay out of view at z=8. */
+const BACK_WALL_SIZE: [number, number] = [28, 42];
 
 interface RoomProps {
   activeWall?: 'main' | 'back';
